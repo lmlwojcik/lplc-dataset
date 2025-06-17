@@ -1,6 +1,9 @@
 import argparse
-from models.yolo_model import create_yolo, train_yolo
 import json
+
+from models.yolo_model import create_yolo, train_yolo
+from models.resnet_model import create_resnet
+
 
 def main(model_name, model_config, data, device):
     with open(model_config, "r") as fd:
@@ -9,13 +12,14 @@ def main(model_name, model_config, data, device):
     if model_name == 'yolo':
         model = create_yolo(cfg)
     elif model_name == 'resnet':
-        model = None
+        model = create_resnet(cfg)
     elif model_name == 'vit':
         model = None
     else:
         print("Error -- model must be one of: yolo, resnet, vit")
         exit()
-    
+    exit()
+
     train_yolo(model, cfg['train_config'], data)
 
 
