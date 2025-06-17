@@ -8,6 +8,6 @@ def create_yolo(cfg):
 
 def train_yolo(yolo, cfg, dataset):
 
-    yolo.train(data=dataset, **cfg)
+    yolo.train(data=dataset['dir'], **cfg)
 
     pass
