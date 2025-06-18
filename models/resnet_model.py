@@ -126,7 +126,7 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
             vm = calc_metrics(resnet, valid_data, "val")
             epoch_metrics.update(vm)
 
-        log_msg = "Epoch {epoch}: " dict_to_string(epoch_metrics)
+        log_msg = "Epoch {epoch}: " + dict_to_string(epoch_metrics)
         logging.info(log_msg)
         print(log_msg)
 
