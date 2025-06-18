@@ -81,7 +81,7 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
     opt = Adam(resnet.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
 
-    def train_epoch():
+    def train_epoch(epoch=0, step_update=-1):
         e_loss = 0
         
         for i, sample in enumerate(train_data):
@@ -95,12 +95,15 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
             opt.step()
             e_loss += c_loss.item()
 
+            if i % step_update == 0:
+                print(f"Epoch {epoch} at step {i}: Loss - {c_loss.item()}")
+
         return e_loss/len(train_data)
 
     for epoch in range(cfg['epochs']):
         print(f"Starting epoch {epoch}")
 
-        epoch_loss = train_epoch()
+        epoch_loss = train_epoch(0, 100)
         tm = calc_metrics(resnet, train_data)
         logging.info(f"Epoch loss: {epoch_loss}")
 
