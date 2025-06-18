@@ -36,12 +36,11 @@ def train_resnet(resnet, cfg, dataset):
         e_loss = 0
         
         for i, sample in enumerate(train_data):
-            print(i)
             im, lb = sample
             opt.zero_grad()
 
             logits = resnet(im)
-            c_loss = loss(logits, lb)
+            c_loss = loss(logits, lb.squeeze())
 
             c_loss.backward()
             opt.step()

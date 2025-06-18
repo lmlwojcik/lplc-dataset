@@ -26,7 +26,7 @@ class LPSD_Dataset(Dataset):
         im = im.to(self.device)
 
         lb = int(self.files[idx].split("/")[-2])
-        lb = ToTensor(lb).to(self.device)
+        lb = torch.tensor([lb]).to(self.device)
 
         return im, lb
 
