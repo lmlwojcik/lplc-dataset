@@ -105,7 +105,7 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
 
         return e_loss/len(train_data)
 
-    if cfg['es_metric'].endswth("loss"):
+    if cfg['es_metric'].endswith("loss"):
         best_metric = 1e5
     else:
         best_metric = 0
@@ -123,10 +123,10 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
         epoch_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
-            vm = calc_metrics(resnet, valid_data, "train")
+            vm = calc_metrics(resnet, valid_data, "val")
             epoch_metrics.update(vm)
 
-        log_msg = dict_to_string(epoch_metrics)
+        log_msg = "Epoch {epoch}: " dict_to_string(epoch_metrics)
         logging.info(log_msg)
         print(log_msg)
 

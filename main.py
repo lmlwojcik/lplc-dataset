@@ -5,6 +5,7 @@ from models.yolo_model import create_yolo, train_yolo
 from models.resnet_model import create_resnet, train_resnet
 from models.vit_model import create_vit
 
+import torch
 
 def main(model_name, model_config, device):
     with open(model_config, "r") as fd:
@@ -15,7 +16,8 @@ def main(model_name, model_config, device):
         train_yolo(model, cfg['train_config'], cfg['data'])
     elif model_name == 'resnet':
         model = create_resnet(cfg)
-        train_resnet(model, cfg['train_config'], cfg['data'], log_cfg=cfg['log_config'])
+        trained_model = train_resnet(model, cfg['train_config'], cfg['data'], log_cfg=cfg['log_config'])
+        torch.save(trained_model.state_dict(), "v1_resnet.pth")
     elif model_name == 'vit':
         model = create_vit(cfg)
         train_resnet(model, cfg['train_config'], cfg['data'])
