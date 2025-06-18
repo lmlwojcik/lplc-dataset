@@ -13,8 +13,9 @@
         "epochs": 200,
 
         "validate": true,
+        "do_es": true,
         "patience": 20,
-        "es_metric": "val_loss"
+        "es_metric": "val_acc"
     },
     "log_config": {
         "experiment_name": "resnet_v0",
@@ -25,7 +26,8 @@
         },
         "metric_log": {
             "method": "epoch",
-            "metrics": ["train_acc", "train_f1", "val_acc", "val_f1"],
+            "metrics": ["train_acc", "train_micro_f1",  "train_macro_f1",
+                        "val_acc", "val_micro_f1", "val_macro_f1"],
             "step": 1
         }
     },

@@ -22,7 +22,7 @@ def create_resnet(cfg):
 
     return resnet
 
-def calc_metrics(model, data):
+def calc_metrics(model, data, pt="train"):
     pds = torch.tensor([])
     gts = torch.tensor([])
 
@@ -33,8 +33,8 @@ def calc_metrics(model, data):
             lb = lb.squeeze()
             pd = logits.max(1).indices
 
-            pds = torch.cat([pd,pds])
-            gts = torch.cat([lb,gts])
+            pds = torch.cat([pd.cpu(),pds])
+            gts = torch.cat([lb.cpu(),gts])
 
             if pds.shape[0] > 50:
                 break
@@ -46,8 +46,13 @@ def calc_metrics(model, data):
     macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=4)
     acc = multiclass_accuracy(pds,gts)
 
-    return {"acc": acc, "micro_f1": micro_f1, "macro_f1": macro_f1}
+    return {f"{pt}_acc": acc, f"{pt}_micro_f1": micro_f1, f"{pt}_macro_f1": macro_f1}
 
+def dict_to_string(dct):
+    ret = ""
+    for k, v in dct.items():
+        ret += f"| {k}: {v}"
+    return ret
 
 def train_resnet(resnet, cfg, dataset, log_cfg=None):
     train_data = DataLoader(
@@ -100,18 +105,38 @@ def train_resnet(resnet, cfg, dataset, log_cfg=None):
 
         return e_loss/len(train_data)
 
+    if cfg['es_metric'].endswth("loss"):
+        best_metric = 1e5
+    else:
+        best_metric = 0
+    cnt = 0
+    epoch_metrics = {}
+
     for epoch in range(cfg['epochs']):
         print(f"Starting epoch {epoch}")
 
         epoch_loss = train_epoch(0, 100)
-        tm = calc_metrics(resnet, train_data)
         logging.info(f"Epoch loss: {epoch_loss}")
 
-        log_msg = f"Epoch {epoch}: | train_acc {tm['acc']} | train_macro_f1 {tm['macro_f1']} | train_micro_f1 {tm['micro_f1']}"
+        tm = calc_metrics(resnet, train_data, "train")
+        epoch_metrics.update(tm)
+        epoch_metrics['train_loss'] = epoch_loss
+
         if cfg['validate']: 
-            vm = calc_metrics(resnet, valid_data)
-            log_msg += f" | valid_acc {vm['acc']} | valid_macro_f1 {vm['macro_f1']} | valid_micro_f1 {vm['micro_f1']}"
+            vm = calc_metrics(resnet, valid_data, "train")
+            epoch_metrics.update(vm)
+
+        log_msg = dict_to_string(epoch_metrics)
         logging.info(log_msg)
         print(log_msg)
 
-    exit()
+        if cfg['do_es']:
+            current_metric = epoch_metrics[cfg['es_metric']]
+            if (cfg['es_metric'].endswith("loss") and current_metric > best_metric) \
+                    or (current_metric < best_metric):
+                best_metric = current_metric
+                cnt += 1
+            if cnt >= cfg['patience']:
+                break
+
+    return resnet
