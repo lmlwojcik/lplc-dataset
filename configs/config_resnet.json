@@ -2,6 +2,16 @@
     "resnet_weights": "IMAGENET1K_V2",
     "freeze": true,
     "train_config": {
-        "freeze": 4
+        "freeze": 4,
+        "optim_config": {
+            "lr": 2e-5,
+            "weight_decay": 0
+        },
+        "batch_size": 16,
+        "shuffle": true
+    },
+    "data": {
+        "path": "sldir/0_1/",
+        "imgsz": [90, 180]
     }
 }

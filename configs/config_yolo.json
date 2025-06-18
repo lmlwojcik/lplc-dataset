@@ -1,5 +1,6 @@
 {
     "yolo_path": "weights/yolo11m-cls.pt",
+    "freeze": true,
     "train_config": {
         "patience": 20,
         "pretrained": true,
@@ -11,6 +12,11 @@
         "val": true,
         "warmup_bias_lr": 0.1,
 
+        "freeze": 10,
+
         "multi_scale": true
+    },
+    "data": {
+        "dir": "sldir/0_1/"
     }
 }
