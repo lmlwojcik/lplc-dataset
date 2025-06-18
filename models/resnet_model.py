@@ -1,4 +1,5 @@
 from torchvision.models import resnet50
+import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -18,16 +19,24 @@ def create_resnet(cfg):
     return resnet
 
 def train_resnet(resnet, cfg, dataset):
+
+    train_data = DataLoader(
+        LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
+        batch_size=cfg['batch_size'],
+        shuffle=cfg['shuffle']
+    )
+
+    if cfg['use_gpu'] != -1:
+        resnet.to(torch.device(cfg['use_gpu']))
+
     opt = Adam(resnet.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
-
-    train_data = DataLoader(LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz']),
-                      batch_size=cfg['batch_size'], shuffle=cfg['shuffle'])
 
     def train_epoch():
         e_loss = 0
         
         for i, sample in enumerate(train_data):
+            print(i)
             im, lb = sample
             opt.zero_grad()
 
