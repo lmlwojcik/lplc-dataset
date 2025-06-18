@@ -3,6 +3,7 @@ import json
 
 from models.yolo_model import create_yolo, train_yolo
 from models.resnet_model import create_resnet, train_resnet
+from models.vit_model import create_vit
 
 
 def main(model_name, model_config, device):
@@ -11,15 +12,17 @@ def main(model_name, model_config, device):
 
     if model_name == 'yolo':
         model = create_yolo(cfg)
+        train_yolo(model, cfg['train_config'], cfg['data'])
     elif model_name == 'resnet':
         model = create_resnet(cfg)
+        train_resnet(model, cfg['train_config'], cfg['data'])
     elif model_name == 'vit':
-        model = None
+        model = create_vit(cfg)
+        train_resnet(model, cfg['train_config'], cfg['data'])
     else:
         print("Error -- model must be one of: yolo, resnet, vit")
         exit()
 
-    train_resnet(model, cfg['train_config'], cfg['data'])
 
 
 if __name__ == '__main__':
