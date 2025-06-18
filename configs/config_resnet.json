@@ -2,6 +2,7 @@
     "resnet_weights": "IMAGENET1K_V1",
     "freeze": true,
     "train_config": {
+        "use_gpu": 0,
         "freeze": 4,
         "optim_config": {
             "lr": 2e-5,
