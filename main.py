@@ -15,7 +15,7 @@ def main(model_name, model_config, device):
         train_yolo(model, cfg['train_config'], cfg['data'])
     elif model_name == 'resnet':
         model = create_resnet(cfg)
-        train_resnet(model, cfg['train_config'], cfg['data'])
+        train_resnet(model, cfg['train_config'], cfg['data'], log_cfg=cfg['log_config'])
     elif model_name == 'vit':
         model = create_vit(cfg)
         train_resnet(model, cfg['train_config'], cfg['data'])
