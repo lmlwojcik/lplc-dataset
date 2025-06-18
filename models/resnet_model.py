@@ -40,9 +40,8 @@ def train_resnet(resnet, cfg, dataset):
             if i % 20 == 0:
                 print(c_loss.item())
 
-        return e_loss
+        return e_loss/len(train_data)
 
     print(train_epoch())
 
     exit()
-    pass
