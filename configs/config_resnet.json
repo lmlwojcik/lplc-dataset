@@ -1,5 +1,5 @@
 {
-    "resnet_weights": "IMAGENET1K_V2",
+    "resnet_weights": "IMAGENET1K_V1",
     "freeze": true,
     "train_config": {
         "freeze": 4,
