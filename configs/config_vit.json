@@ -1,4 +1,5 @@
 {
+    "model_name": "vit",
     "vit_weights": "IMAGENET1K_V1",
     "freeze": true,
     "train_config": {

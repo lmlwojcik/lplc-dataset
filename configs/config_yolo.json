@@ -1,4 +1,5 @@
 {
+    "model_name": "yolo",
     "yolo_path": "weights/yolo11m-cls.pt",
     "freeze": true,
     "train_config": {
