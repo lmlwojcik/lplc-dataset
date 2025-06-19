@@ -6,7 +6,7 @@ from torcheval.metrics.functional import (
 
 import torch
 
-def calc_metrics(model, data, pt="train", return_matrix=False):
+def eval_model(model, data):
     pds = torch.tensor([])
     gts = torch.tensor([])
 
@@ -26,6 +26,9 @@ def calc_metrics(model, data, pt="train", return_matrix=False):
     pds = pds.to(torch.int64)
     gts = gts.to(torch.int64)
 
+    return gts, pds
+
+def gen_metrics(gts, pds, pt="train", return_matrix=False):
     micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
     macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=4).item()
     acc = multiclass_accuracy(pds,gts).item()
@@ -34,7 +37,10 @@ def calc_metrics(model, data, pt="train", return_matrix=False):
 
     if return_matrix:
         metrics[f"{pt}_matrix"] = multiclass_confusion_matrix(pds,gts,num_classes=4).tolist()
-
     return metrics
+
+def calc_metrics(model, data, pt="train", return_matrix=False):
+    gts, pds = eval_model(model, data)
+    return gen_metrics(gts,pds,pt,return_matrix)
 
 

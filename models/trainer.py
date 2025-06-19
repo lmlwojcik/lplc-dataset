@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
+from ultralytics import YOLO
 
 from datetime import datetime
 from pathlib import Path
@@ -9,7 +10,7 @@ from glob import glob
 import logging
 
 from dataset.dataset_utils import LPSD_Dataset
-from models.eval import calc_metrics
+from models.eval import calc_metrics, gen_metrics
 from models.utils import dict_to_string, find_model
 
 def train_torch_model(model, cfg, dataset, log_cfg=None):
@@ -128,7 +129,26 @@ def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
     metrics = calc_metrics(model, test_data, pt=partition, return_matrix=True)
     return metrics
 
-def test_yolo(model, cfg, dataset, partition='test'):
+def test_yolo(model, cfg, dataset, partition='test', load_model=None):
+    if model is None:
+        if load_model is not None:
+            model = YOLO(load_model)
+        else:
+            model = YOLO(f"{cfg['save_path']}/weights/best.pt")
 
-    pass
+    dts = LPSD_Dataset(dataset['dir'], partition, imgsz=224, device=-1)
+    gts = []
+    pds = []
+    for g in dts.files[:50]:
+        r = model(([g]))[0]
+
+        pd = r.probs.top1
+        gt = int(g.split("/")[-2])
+
+        gts.append(gt)
+        pds.append(pd)
+
+    return gen_metrics(torch.tensor(gts,dtype=torch.int64),
+                       torch.tensor(pds,dtype=torch.int64)
+                       ,pt=partition,return_matrix=True)
 

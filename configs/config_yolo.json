@@ -15,9 +15,16 @@
 
         "freeze": 10,
 
-        "multi_scale": true
+        "multi_scale": true,
+        "name": "yolo_v0"
     },
     "data": {
         "dir": "sldir/0_1/"
+    },
+    "test_config": {
+        "batch": 32,
+        "imgsz": [90, 180],
+        "name": "yolov0_pred",
+        "save_path": "yolov0_pred"
     }
 }

@@ -33,7 +33,7 @@ def main(config, do_train, do_test, load_model):
 
     if do_test:
         if model_name == 'yolo':
-            test_results = test_yolo(model, cfg['test_config'], cfg['data'], "test", load_model)
+            test_results = test_yolo(model, cfg['train_config'], cfg['data'], "test", load_model)
         else:
             test_results = test_torch_model(model, cfg['test_config'], cfg['data'], "test", load_model)
         results.update(test_results)
