@@ -44,10 +44,10 @@ def main(config, do_train, do_test, load_model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default="configs/config_yolo.json")
-    parser.add_argument('--do_train', default=False, action='store_true')
-    parser.add_argument('--do_test', default=False, action='store_true')
-    parser.add_argument('--load_model', default=None)
+    parser.add_argument('-c', '--config', default="configs/config_yolo.json")
+    parser.add_argument('-t', '--do_train', default=False, action='store_true')
+    parser.add_argument('-v', '--do_test', default=False, action='store_true')
+    parser.add_argument('-m', '--load_model', default=None)
 
     args = vars(parser.parse_args())
     
