@@ -116,7 +116,7 @@ def train_yolo(yolo, cfg, dataset):
 
 def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
     test_data = DataLoader(
-        LPSD_Dataset(dataset['path'], "test", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
+        LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu']),
         batch_size=cfg['batch_size'],
         shuffle=False
     )
@@ -144,7 +144,7 @@ def test_yolo(model, cfg, dataset, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['dir'], partition, imgsz=224, device=-1)
     gts = []
     pds = []
-    for g in dts.files[:50]:
+    for g in dts.files:
         r = model(([g]))[0]
 
         pd = r.probs.top1
