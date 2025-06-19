@@ -1,7 +1,12 @@
-from torcheval.metrics.functional import multiclass_accuracy, multiclass_f1_score
+from torcheval.metrics.functional import (
+        multiclass_accuracy,
+        multiclass_f1_score,
+        multiclass_confusion_matrix
+    )
+
 import torch
 
-def calc_metrics(model, data, pt="train"):
+def calc_metrics(model, data, pt="train", return_matrix=False):
     pds = torch.tensor([])
     gts = torch.tensor([])
 
@@ -21,10 +26,15 @@ def calc_metrics(model, data, pt="train"):
     pds = pds.to(torch.int64)
     gts = gts.to(torch.int64)
 
-    micro_f1 = multiclass_f1_score(pds,gts,average='micro')
-    macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=4)
-    acc = multiclass_accuracy(pds,gts)
+    micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
+    macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=4).item()
+    acc = multiclass_accuracy(pds,gts).item()
 
-    return {f"{pt}_acc": acc, f"{pt}_micro_f1": micro_f1, f"{pt}_macro_f1": macro_f1}
+    metrics = {f"{pt}_acc": acc, f"{pt}_micro_f1": micro_f1, f"{pt}_macro_f1": macro_f1}
+
+    if return_matrix:
+        metrics[f"{pt}_matrix"] = multiclass_confusion_matrix(pds,gts,num_classes=4).tolist()
+
+    return metrics
 
 

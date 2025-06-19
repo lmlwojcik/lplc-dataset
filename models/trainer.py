@@ -5,11 +5,12 @@ from torch.utils.data import DataLoader
 
 from datetime import datetime
 from pathlib import Path
+from glob import glob
 import logging
 
 from dataset.dataset_utils import LPSD_Dataset
 from models.eval import calc_metrics
-from models.utils import dict_to_string
+from models.utils import dict_to_string, find_model
 
 def train_torch_model(model, cfg, dataset, log_cfg=None):
     train_data = DataLoader(
@@ -61,6 +62,7 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         best_metric = 0
     cnt = 0
     epoch_metrics = {}
+    epoch = 0
 
     for epoch in range(1, cfg['epochs']+1):
         print(f"Starting epoch {epoch}")
@@ -91,12 +93,42 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
             if cnt >= cfg['patience']:
                 break
     if cfg['save_last']:
-        torch.save(model.state_dict(), Path(cfg['save_path']) / Path(f"model_last_epoch_{epoch}.pth"))
+        torch.save(model, Path(cfg['save_path']) / Path(f"model_last_epoch_{epoch}.pth"))
+    if epoch == 0:
+        epoch_metrics = calc_metrics(model, train_data, "train")
+        vm = calc_metrics(model, valid_data, "val")
+        epoch_metrics.update(vm)
 
-    return model
+    return model, epoch_metrics
 
 def train_yolo(yolo, cfg, dataset):
 
     yolo.train(data=dataset['dir'], **cfg)
 
-    return yolo
+    return yolo, None
+
+
+def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
+    test_data = DataLoader(
+        LPSD_Dataset(dataset['path'], "test", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
+        batch_size=cfg['batch_size'],
+        shuffle=False
+    )
+
+    if model is None:
+        # We jump here without training, model must be loaded from memory
+        if load_model is not None:
+            model = torch.load(load_model)
+        else:
+            print(find_model(cfg['save_path']))
+            model = torch.load(find_model(cfg['save_path']))
+        if cfg['use_gpu'] != -1:
+            model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
+
+    metrics = calc_metrics(model, test_data, pt=partition, return_matrix=True)
+    return metrics
+
+def test_yolo(model, cfg, dataset, partition='test'):
+
+    pass
+

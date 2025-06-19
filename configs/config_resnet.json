@@ -22,6 +22,11 @@
         "save_best": true,
         "save_path": "saved/resnet"
     },
+    "test_config": {
+        "use_gpu": 0,
+        "batch_size": 32,
+        "save_path": "saved/resnet"
+    },
     "log_config": {
         "experiment_name": "resnet_v0",
         "loss_log": {
