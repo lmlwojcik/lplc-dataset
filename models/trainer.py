@@ -4,14 +4,12 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from ultralytics import YOLO
 
-from datetime import datetime
 from pathlib import Path
-from glob import glob
-import logging
+import json
 
 from dataset.dataset_utils import LPSD_Dataset
 from models.eval import calc_metrics, gen_metrics
-from models.utils import dict_to_string, find_model
+from models.utils import find_model, log_metrics_json
 
 def train_torch_model(model, cfg, dataset, log_cfg=None):
     train_data = DataLoader(
@@ -28,7 +26,10 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         )
 
     if log_cfg is not None:
-        logging.basicConfig(filename=f"logs/{log_cfg['experiment_name']}_{str(datetime.now())}.log")
+        log_file = Path('logs') / Path(log_cfg['experiment_name'] + ".json")
+        with open(log_file, "w") as fd:
+            fd.write("[")
+    log_metrics = {}
 
     if cfg['use_gpu'] != -1:
         model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
@@ -69,22 +70,22 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         print(f"Starting epoch {epoch}")
 
         epoch_loss = train_epoch(epoch, -1)
-        logging.info(f"Epoch loss: {epoch_loss}")
+        log_metrics['epoch'] = epoch
 
         tm = calc_metrics(model, train_data, "train")
-        epoch_metrics.update(tm)
-        epoch_metrics['train_loss'] = epoch_loss
+        log_metrics.update(tm)
+        log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
             vm = calc_metrics(model, valid_data, "val")
-            epoch_metrics.update(vm)
+            log_metrics.update(vm)
 
-        log_msg = f"Epoch {epoch}: " + dict_to_string(epoch_metrics)
-        logging.info(log_msg)
-        print(log_msg)
+        print(json.dumps(log_metrics))
+        if log_cfg is not None:
+            log_metrics_json(log_metrics, log_file)
 
         if cfg['do_es']:
-            current_metric = epoch_metrics[cfg['es_metric']]
+            current_metric = log_metrics[cfg['es_metric']]
             if (cfg['es_metric'].endswith("loss") and current_metric > best_metric) \
                     or (current_metric < best_metric):
                 best_metric = current_metric
@@ -96,11 +97,15 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
     if cfg['save_last']:
         torch.save(model, Path(cfg['save_path']) / Path(f"model_last_epoch_{epoch}.pth"))
     if epoch == 0:
-        epoch_metrics = calc_metrics(model, train_data, "train")
+        log_metrics = calc_metrics(model, train_data, "train")
         vm = calc_metrics(model, valid_data, "val")
-        epoch_metrics.update(vm)
+        log_metrics.update(vm)
+    if log_cfg is not None:
+        log_metrics_json(log_metrics, log_file)
+        with open(log_file, "a") as fd:
+            fd.write("\{\}]")
 
-    return model, epoch_metrics
+    return model, log_metrics
 
 def train_yolo(yolo, cfg, dataset):
 

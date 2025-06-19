@@ -24,7 +24,7 @@ def main(config, do_train, do_test, load_model):
         if model_name == 'yolo':
             model, results = train_yolo(model, cfg['train_config'], cfg['data'])
         else:
-            model, results = train_torch_model(model, cfg['train_config'], cfg['data'])
+            model, results = train_torch_model(model, cfg['train_config'], cfg['data'], cfg['log_config'])
         with open(Path(cfg['train_config']['save_path']) / "train_results.json", "w") as fd:
             json.dump(results, fd, indent=2)
     else:

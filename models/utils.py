@@ -1,5 +1,6 @@
 from natsort import natsorted
 from glob import glob
+import json
 
 def dict_to_string(dct):
     # For logging purposes
@@ -18,3 +19,7 @@ def find_model(save_path):
             return m
     chosen = m
     return chosen
+
+def log_metrics_json(metrics, log_file="logs/log.log"):
+    with open(log_file, "a") as fd:
+        fd.write(json.dumps(metrics) + ",\n")
