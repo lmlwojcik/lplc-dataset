@@ -1,0 +1,42 @@
+{
+    "graphs": [
+        {
+            "fname": "loss_graph",
+            "width_per_epoch": 50,
+            "fig_args": {
+                "title": "Loss graph",
+                "x_axis_label": "epochs",
+                "y_axis_label": "values"
+            },
+            "values": ["train_loss", "train_loss"],
+            "colors": ["red", "yellow"]
+        },
+        {
+            "fname": "acc_graph",
+            "width_per_epoch": 50,
+            "fig_args": {
+                "title": "Accuracy graph",
+                "x_axis_label": "epochs",
+                "y_axis_label": "values"
+            },
+            "values": ["train_acc", "val_acc"],
+            "colors": ["red", "yellow"]
+
+        },
+        {
+            "fname": "f1_graph",
+            "width_per_epoch": 50,
+            "fig_args": {
+                "title": "F1-score graph",
+                "x_axis_label": "epochs",
+                "y_axis_label": "values"
+            },
+            "name": "f1_graph",
+            "values": ["train_micro_f1", "train_macro_f1", "val_micro_f1", "val_macro_f1"],
+            "colors": ["red", "darkred", "yellow", "yellowgreen"]
+
+        }
+    ],
+    "save_dir": "graphs/",
+    "save_images": true
+}
