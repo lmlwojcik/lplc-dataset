@@ -1,15 +1,16 @@
 {
     "model_name": "resnet",
     "resnet_weights": "IMAGENET1K_V1",
-    "freeze": true,
+    "freeze": false,
     "train_config": {
         "use_gpu": 0,
-        "freeze": 4,
+        "optim": "sgd",
         "optim_config": {
-            "lr": 2e-5,
-            "weight_decay": 0
+            "lr": 1e-5,
+            "weight_decay": 1e-4,
+            "momentum": 0.9
         },
-        "batch_size": 128,
+        "batch_size": 16,
         "shuffle": true,
         "epochs": 200,
 
@@ -24,7 +25,7 @@
     },
     "test_config": {
         "use_gpu": 0,
-        "batch_size": 32,
+        "batch_size": 16,
         "save_path": "saved/resnet"
     },
     "log_config": {
@@ -42,7 +43,7 @@
         }
     },
     "data": {
-        "path": "sldir/0_1/",
+        "path": "sldir/scen0/0_1/",
         "imgsz": [90, 180]
     }
 }

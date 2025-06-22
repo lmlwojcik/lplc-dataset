@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from torch.utils.data import DataLoader
 from ultralytics import YOLO
 
@@ -34,7 +34,10 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
     if cfg['use_gpu'] != -1:
         model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
 
-    opt = Adam(model.named_parameters(), **cfg['optim_config'])
+    if cfg['optim'] == "adam":
+        opt = Adam(model.named_parameters(), **cfg['optim_config'])
+    elif cfg['optim'] == "sgd":
+        opt = SGD(model.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
 
     def train_epoch(epoch=0, step_update=-1, c_step=0):
@@ -47,7 +50,7 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
             opt.zero_grad()
 
             logits = model(im)
-            c_loss = loss(logits, lb.squeeze())
+            c_loss = loss(logits, lb.squeeze(1))
 
             c_loss.backward()
             opt.step()
