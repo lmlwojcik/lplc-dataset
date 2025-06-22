@@ -1,5 +1,6 @@
 {
     "class_name": "readable",
+    "all_classes": ["0", "1", "2"],
     "exclude_classes": [],
     "class_dct": {
         "0": [0, 1],

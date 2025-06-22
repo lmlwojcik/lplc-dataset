@@ -9,6 +9,8 @@ import copy
 
 def save_prot_ims(pname, pt, n_classes, exclude_idx):
     path = Path('lpr_dts') / Path(f"{pname}")
+    if path.exists():
+        shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)    
 
     for i in range(n_classes):
@@ -60,7 +62,9 @@ def agg_at_idxs(pls, idxs, cls):
 
 def gen_sym_partition(fs, sldir, fname):
     path = Path(sldir) / Path(fname)
-    path.mkdir(parents=True, exist_ok=True)    
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
 
     for i in fs.keys():
         c_path = path / Path(f"{i}")
@@ -104,6 +108,8 @@ def gen_splits(cfg, c_cfg):
     plates = load_fnames(cfg, cls)
     for i in cls.keys():
         plates[i] = split_files(plates[i], nf)
+    if c_cfg is not None:
+        cfg['output_dir'] += "/" + c_cfg['sub_dir']
 
     n_folds = {}
     for i in range(nf):
