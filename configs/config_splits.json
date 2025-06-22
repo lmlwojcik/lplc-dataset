@@ -1,0 +1,10 @@
+{
+    "dataset_dir": "LPSD_Dataset/lps",
+    "annotation_file": "LPSD_Dataset/annotations_revised_formatted.json",
+    "output_dir": "LPSD_Dataset/folds",
+    "do_shuffle": true,
+    "n_folds": 5,
+    "cross_fold": true,
+    "gen_sym_links": true,
+    "sym_link_dir": "sldir"
+}

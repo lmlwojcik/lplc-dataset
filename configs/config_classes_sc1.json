@@ -1,0 +1,10 @@
+{
+    "class_name": "readable",
+    "all_classes": ["0", "1"],
+    "exclude_classes": ["3"],
+    "class_dct": {
+        "0": ["0", "1"],
+        "1": ["2"]
+    },
+    "sub_dir": "scen1"
+}
