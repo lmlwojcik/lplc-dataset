@@ -12,6 +12,9 @@ from models.eval import calc_metrics, gen_metrics
 from models.utils import find_model, log_metrics_json
 
 def train_torch_model(model, cfg, dataset, log_cfg=None):
+    save_path = Path(cfg['save_path'])
+    save_path.mkdir(parents=True,exist_ok=True)
+
     train_data = DataLoader(
         LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
         batch_size=cfg['batch_size'],
@@ -88,13 +91,15 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
             log_metrics_json(log_metrics, log_file)
 
         if cfg['do_es']:
+            cnt += 1
             current_metric = log_metrics[cfg['es_metric']]
-            if (cfg['es_metric'].endswith("loss") and current_metric > best_metric) \
-                    or (current_metric < best_metric):
+            if (cfg['es_metric'].endswith("loss") and current_metric < best_metric) \
+                    or (current_metric > best_metric):
                 best_metric = current_metric
-                cnt += 1
+                cnt = 0
+                
                 if cfg['save_best']:
-                    torch.save_state_dict(model, Path(cfg['save_path']) / Path("model_best.pth"))
+                    torch.save(model, Path(cfg['save_path']) / Path("model_best.pth"))
             if cnt >= cfg['patience']:
                 break
     if cfg['save_last']:
