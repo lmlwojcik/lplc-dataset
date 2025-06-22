@@ -83,7 +83,7 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
-            vm = calc_metrics(model, valid_data, "val")
+            vm = calc_metrics(model, valid_data, "val", get_loss=True, loss=loss)
             log_metrics.update(vm)
 
         print(json.dumps(log_metrics))
