@@ -4,6 +4,10 @@ from torchvision.models import resnet50
 
 from torch import nn
 
+# Workaround for the case where the torch ssl certificate expires
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 def create_vit(cfg):
     vit = vit_b_16(weights=cfg['vit_weights'])
 
