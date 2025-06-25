@@ -13,10 +13,12 @@ def dict_to_string(dct):
 def find_model(save_path):
     # By the syntax the outputted models, the last one in the list is the latest
     models = natsorted(list(glob(f"{save_path}/*.pth")))
-
+    print(models, save_path)
     for m in models:
         if "best" in m:
+            print("returning ", m)
             return m
+        print(m)
     chosen = m
     return chosen
 

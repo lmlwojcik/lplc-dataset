@@ -35,7 +35,7 @@ def save_folds(tr, vl, te, idx=0, dataset_dir="lpr_dts", fold_dir="folds"):
 
     out = {
         "train": tr,
-        "valid": vl,
+        "val": vl,
         "test": te
     }
     with open(f"{fold_dir}/fold_{idx}.json", "w") as fd:
@@ -76,7 +76,7 @@ def gen_sym_partition(fs, sldir, fname):
 
 def gen_sym_links(tr, vl, te, fold_name, sldir):
     gen_sym_partition(tr, sldir, fold_name + "/train/")
-    gen_sym_partition(vl, sldir, fold_name + "/valid/")
+    gen_sym_partition(vl, sldir, fold_name + "/val/")
     gen_sym_partition(te, sldir, fold_name + "/test/")
 
 def class_mapping(c_cfg, n_classes):
@@ -129,20 +129,23 @@ def gen_splits(cfg, c_cfg):
         save_folds(train_fs, valid_fs, test_fs, f"{i}_1",
                    fold_dir=cfg['output_dir'])
         n_folds[f"{i}_1"] = {"train": copy.deepcopy(train_fs),
-                             "valid": copy.deepcopy(valid_fs),
+                             "val": copy.deepcopy(valid_fs),
                              "test": copy.deepcopy(test_fs)}
 
         if cfg['cross_fold']:
             save_folds(test_fs, valid_fs, train_fs, f"{i}_2",
                     fold_dir=cfg['output_dir'])
             n_folds[f"{i}_2"] = {"train": copy.deepcopy(test_fs),
-                                 "valid": copy.deepcopy(valid_fs),
+                                 "val": copy.deepcopy(valid_fs),
                                  "test": copy.deepcopy(train_fs)}
 
     return n_folds
 
-def load_splits(cfg):
-    all_folds = sorted(glob(f"{cfg['output_dir']}/*.json"))
+def load_splits(cfg, c_cfg):
+    fdir = Path(cfg['output_dir'])
+    if c_cfg is not None:
+        fdir = fdir / Path(c_cfg['sub_dir'])
+    all_folds = sorted(glob(f"{fdir}/*.json"))
     ret = {}
     for f in all_folds:
         k = f.split("_")
@@ -153,7 +156,7 @@ def load_splits(cfg):
 
 def gen_sldirs(folds, cfg, subdir=""):
     for k,v in folds.items():
-        gen_sym_links(v['train'], v['valid'], v['test'], k,
+        gen_sym_links(v['train'], v['val'], v['test'], k,
                       sldir=os.path.join(cfg['sym_link_dir'], subdir))
 
 if __name__ == "__main__":
@@ -191,7 +194,7 @@ if __name__ == "__main__":
     if not cfg['load_folds']:
         folds = gen_splits(cfg, c_cfg)
     else:
-        folds = load_splits(cfg)
+        folds = load_splits(cfg, c_cfg)
 
     if cfg['gen_sym_links']:
         if c_cfg is not None:

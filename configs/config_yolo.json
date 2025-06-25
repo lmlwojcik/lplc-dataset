@@ -1,7 +1,8 @@
 {
     "model_name": "yolo",
     "yolo_path": "weights/yolo11m-cls.pt",
-    "freeze": true,
+    "freeze": false,
+    "save_path": "saved/",
     "train_config": {
         "patience": 20,
         "pretrained": true,
@@ -16,7 +17,7 @@
         "freeze": 10,
 
         "multi_scale": true,
-        "name": "yolo_v0"
+        "name": "yolo"
     },
     "data": {
         "dir": "sldir/0_1/"

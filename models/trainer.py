@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from ultralytics import YOLO
 
 from pathlib import Path
+import shutil
 import json
 
 from dataset.dataset_utils import LPSD_Dataset
@@ -115,7 +116,14 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
 
     return model, log_metrics
 
-def train_yolo(yolo, cfg, dataset):
+def train_yolo(yolo, cfg, dataset, save_dir=None):
+
+    if save_dir is not None:
+        pjdir = Path(save_dir) / Path(cfg['name'])
+        cfg['project'] = pjdir
+
+        if pjdir.exists():
+            shutil.rmtree(pjdir)    
 
     yolo.train(data=dataset['dir'], **cfg)
 

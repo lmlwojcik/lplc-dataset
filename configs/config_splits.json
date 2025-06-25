@@ -6,5 +6,5 @@
     "n_folds": 5,
     "cross_fold": true,
     "gen_sym_links": true,
-    "sym_link_dir": "sldir"
+    "sym_link_dir": "sldir2"
 }

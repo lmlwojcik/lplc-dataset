@@ -10,13 +10,15 @@ def main(config, do_train, do_test, load_model, dataset, run_name):
         cfg = json.load(fd)
     if run_name is not None:
         print(f"Starting run: {run_name}")
-        cfg['train_config']['save_path'] += "/" + run_name
+        tag = "save_path" if cfg['model_name'] != 'yolo' else "name"
+        cfg['train_config'][tag] += "/" + run_name
         cfg['test_config']['save_path'] += "/" + run_name
     else:
         print("Starting run")
+    tag = "path" if cfg['model_name'] != 'yolo' else "dir"
     if dataset is not None:
-        cfg['data']['path'] = dataset
-    print(f"Dataset partition: {cfg['data']['path']}")
+        cfg['data']['dir'] = dataset
+    print(f"Dataset partition: {cfg['data'][tag]}")
 
     model_name = cfg['model_name']
 
@@ -32,11 +34,12 @@ def main(config, do_train, do_test, load_model, dataset, run_name):
 
     if do_train:
         if model_name == 'yolo':
-            model, results = train_yolo(model, cfg['train_config'], cfg['data'])
+            model, results = train_yolo(model, cfg['train_config'], cfg['data'], cfg['save_path'])
         else:
             model, results = train_torch_model(model, cfg['train_config'], cfg['data'], cfg['log_config'])
-        with open(Path(cfg['train_config']['save_path']) / "train_results.json", "w") as fd:
-            json.dump(results, fd, indent=2)
+        if results is not None:
+            with open(Path(cfg['train_config']['save_path']) / "train_results.json", "w") as fd:
+                json.dump(results, fd, indent=2)
     else:
         model = None
         results = {}
