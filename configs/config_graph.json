@@ -38,5 +38,12 @@
         }
     ],
     "save_dir": "graphs/",
-    "save_images": true
+    "save_images": true,
+    "cm": {
+        "fig_args": {
+            "title": "Test Confusion Matrix",
+            "x_range": ["perfect", "legible", "damaged", "illegible"],
+            "y_range": ["illegible", "damaged", "legible", "perfect"]
+        }
+    }
 }
