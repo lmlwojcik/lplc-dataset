@@ -36,16 +36,16 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
     <td>
       Perfect
     </td>
-    <td text-align='center'>
+    <td align='center'>
       5,535
     </td>
     <td>
-      Plate characters occluded
+      Plate characters not occluded
     </td>
-    <td>
+    <td align='center'>
       12,586
     </td>
-    <td>
+    <td align='center'>
       101
     </td>
   </tr>
@@ -53,16 +53,16 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
     <td>
       Good
     </td>
-    <td>
+    <td align='center'>
       3,426
     </td>
     <td>
       Valid (non-occluded) vehicle
     </td>
-    <td>
+    <td align='center'>
       12,389
     </td>
-    <td>
+    <td align='center'>
       328
     </td>
   </tr>
@@ -70,16 +70,16 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
     <td>
       Poor
     </td>
-    <td>
+    <td align='center'>
       2,122
     </td>
     <td>
       Has OCR
     </td>
-    <td>
+    <td align='center'>
       11,083
     </td>
-    <td>
+    <td align='center'>
       1604
     </td>
   </tr>
@@ -87,13 +87,13 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
     <td>
       Illegible
     </td>
-    <td>
+    <td align='center'>
       1,604
     </td>
     <td>
       Total LPs
     </td>
-    <td colspan=2>
+    <td colspan=2 align='center'>
       12,687
     </td>
   </tr>
