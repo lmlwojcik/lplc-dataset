@@ -1,3 +1,4 @@
+
 from torcheval.metrics.functional import (
         multiclass_accuracy,
         multiclass_f1_score,
@@ -7,8 +8,8 @@ from torcheval.metrics.functional import (
 import torch
 
 def eval_model(model, data, get_loss=False, loss=None):
-    pds = torch.tensor([])
-    gts = torch.tensor([])
+    pds = torch.tensor([]).to("cuda")
+    gts = torch.tensor([]).to("cuda")
 
     if get_loss:
         vloss = 0
@@ -28,12 +29,8 @@ def eval_model(model, data, get_loss=False, loss=None):
 
             pd = logits.max(1).indices
 
-            pds = torch.cat([pd.cpu(),pds])
-            gts = torch.cat([lb.cpu(),gts])
-
-            if pds.shape[0] > 50:
-                break
-
+            pds = torch.cat([pd,pds])
+            gts = torch.cat([lb,gts])
     pds = pds.to(torch.int64)
     gts = gts.to(torch.int64)
 
@@ -52,11 +49,10 @@ def gen_metrics(gts, pds, pt="train", return_matrix=False, loss=None):
         metrics[f"{pt}_loss"] = loss
 
     if return_matrix:
+        print(gts.shape, pds.shape)
         metrics[f"{pt}_matrix"] = multiclass_confusion_matrix(pds,gts,num_classes=4).tolist()
     return metrics
 
 def calc_metrics(model, data, pt="train", return_matrix=False, get_loss=False, loss=None):
     gts, pds, loss = eval_model(model, data, get_loss=get_loss, loss=loss)
     return gen_metrics(gts,pds,pt,return_matrix, loss=loss)
-
-
