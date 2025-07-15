@@ -1,0 +1,6 @@
+**/__pycache__/
+sldir/
+
+*.zip
+LPRD_Dataset
+saved/
