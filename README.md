@@ -97,7 +97,7 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
   </tr>
 </table>
 
-<img src="./images/ocr_levels.png" margin-left='auto' margin-right='auto'>
+<img src="./images/ocr_levels.png" align='center'>
 
 The LPRD dataset is available under request. If you are interested, please contact us (lmlwojcik@inf.ufpr.br or menotti@inf.ufpr.br) in an e-mail titled "2025 LPRD Request Form". Please inform your name, affiliation and purpose of use. Also inform one or two of your recent publications (up to 5 years), if any.
 
