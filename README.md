@@ -1,10 +1,10 @@
 # LPRD Dataset - License Plate Readability Detection
 
-<img src="./images/lps.png" width=75%>
+<img src="./images/lps.png" width=100%>
 
 This is the repository for the LPRD Dataset, presented in the paper "A New Dataset for Readability Classification for License Plate Recognition". This dataset is comprised of 10,200 images, with 12,687 license plates annotated in total. Each license plate is annotated according to readability (4 levels), OCR (for 3 of the 4 readability levels), bounding box (four points (x,y)) and plate and vehicle-wise occlusion (valid vs. occluded attributes). Dataset statistics are available below.
 
-<table border="1px solid black">
+<table border="1px solid black" align='center'>
   <tr>
     <th colspan="2">
         LPs by readability
