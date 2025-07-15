@@ -1,7 +1,8 @@
 # LPRD Dataset - License Plate Readability Detection
 
-This is the repository for the LPRD Dataset, presented in the paper "A New Dataset for Readability Classification for License Plate Recognition". This dataset is comprised of 10,200 images, with 12,687 license plates annotated in total. Each license plate is annotated according to readability (4 levels), OCR (for 3 of the 4 readability levels), bounding box (four points (x,y)) and plate and vehicle-wise occlusion (valid vs. occluded attributes). Dataset statistics are available below.
+<img src="./images/lps.png" width=75%>
 
+This is the repository for the LPRD Dataset, presented in the paper "A New Dataset for Readability Classification for License Plate Recognition". This dataset is comprised of 10,200 images, with 12,687 license plates annotated in total. Each license plate is annotated according to readability (4 levels), OCR (for 3 of the 4 readability levels), bounding box (four points (x,y)) and plate and vehicle-wise occlusion (valid vs. occluded attributes). Dataset statistics are available below.
 
 <table border="1px solid black">
   <tr>
@@ -96,6 +97,8 @@ This is the repository for the LPRD Dataset, presented in the paper "A New Datas
   </tr>
 </table>
 
+<img src="./images/ocr_levels.png" margin-left='auto' margin-right='auto'>
+
 The LPRD dataset is available under request. If you are interested, please contact us (lmlwojcik@inf.ufpr.br or menotti@inf.ufpr.br) in an e-mail titled "2025 LPRD Request Form". Please inform your name, affiliation and purpose of use. Also inform one or two of your recent publications (up to 5 years), if any.
 
 All samples in the dataset can only be used by the applicant and only used for academic research. It may not be used for commercial usage, and use in publications must be properly acknowledged. The BibTeX citation is available below.
@@ -107,6 +110,8 @@ Hello world
 ## Experiments reproduction
 
 Our results are the average from the test set of a double 5-fold experiment run, where we split the dataset into a 40/20/40 distribution and each fold is used for training twice, alternating the two 40% distributions for training and testing once, resulting in 10 runs. This is illustrated below.
+
+<img src="./images/fold_splits.png" width=75%>
 
 The folds used for each training scenario are available in the dataset. To generate new distributions, use the `gen_splits.py` script. Its usage is illustrated below. This script generates new n-fold distributions (with alternate training/test partitions if the flag `--cross_fold` is enabled, and it defaults to `True`) if the flag `--load_folds` is not provided, defaulting to `False`. Otherwise, the folds are loaded from memory according to the output dir provided in command line (`--output_dir [DIR, optional, default='LPRD_Dataset/folds/']`) or the configuration file.
 
