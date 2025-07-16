@@ -4,3 +4,5 @@ sldir/
 *.zip
 LPRD_Dataset
 saved/
+logs/*
+!logs/.gitkeep
