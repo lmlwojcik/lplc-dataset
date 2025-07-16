@@ -51,7 +51,7 @@ class CNN_Baseline(nn.Module):
 
 class CNN_Baseline_Small(nn.Module):
     def __init__(self, n_classes):
-        super(CNN_Baseline, self).__init__()
+        super(CNN_Baseline_Small, self).__init__()
         
         self.layer0 = nn.Conv2d(kernel_size=3, in_channels=3, out_channels=16, stride=1,padding='same')
         self.layer1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -61,9 +61,9 @@ class CNN_Baseline_Small(nn.Module):
         self.layer3 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.layer3bn = nn.BatchNorm2d(32)
         self.layer3rl = nn.ReLU()
-        self.layer6 = nn.Flatten()        
+        self.layer6 = nn.Flatten()
         
-        self.layer7 = nn.Linear(in_features=6144, out_features=128)
+        self.layer7 = nn.Linear(in_features=24576, out_features=128)
         self.layer7_2 = nn.ReLU()
         self.layer8 = nn.Linear(in_features=128, out_features=n_classes)
 
