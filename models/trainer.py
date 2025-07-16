@@ -97,13 +97,11 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         epoch_loss, tm = train_epoch(epoch, -1)
         log_metrics['epoch'] = epoch
 
-        #print(tm)
         log_metrics.update(tm)
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
             vm = calc_metrics(model, valid_data, "val", get_loss=True, loss=loss)
-            #print(vm)
             log_metrics.update(vm)
 
         print(dict_to_table(log_metrics))
@@ -139,7 +137,6 @@ def train_yolo(yolo, cfg, dataset, save_dir=None):
 
     if save_dir is not None:
         pjdir = Path(save_dir) / Path(cfg['name'])
-        #pjdir = Path(save_dir)
         cfg['project'] = Path(pjdir)
 
         if pjdir.exists():
@@ -163,7 +160,6 @@ def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
         if load_model is not None:
             model = torch.load(load_model)
         else:
-            print(find_model(cfg['save_path']))
             model = torch.load(find_model(cfg['save_path']))
         if cfg['use_gpu'] != -1:
             model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
@@ -184,7 +180,6 @@ def predict_torch_model(model, cfg, dataset, partition='test', load_model=None):
         if load_model is not None:
             model = torch.load(load_model)
         else:
-            print(find_model(cfg['save_path']))
             model = torch.load(find_model(cfg['save_path']))
         if cfg['use_gpu'] != -1:
             model.to(torch.device(f"cuda:{cfg['use_gpu']}"))

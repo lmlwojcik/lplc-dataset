@@ -20,7 +20,7 @@
         "name": "yolo"
     },
     "data": {
-        "dir": "sldir/0_1/"
+        "dir": "sldir/scen0/0_1/"
     },
     "test_config": {
         "batch": 32,
