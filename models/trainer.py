@@ -4,6 +4,7 @@ from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from ultralytics import YOLO
+from tqdm import tqdm
 
 from pathlib import Path
 import shutil
@@ -12,7 +13,7 @@ import os
 
 from dataset.dataset_utils import LPSD_Dataset
 from models.eval import calc_metrics, gen_metrics
-from models.utils import find_model, log_metrics_json
+from models.utils import find_model, start_log, end_log, log_metrics_json, dict_to_table
 
 
 def train_torch_model(model, cfg, dataset, log_cfg=None):
@@ -34,8 +35,8 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
 
     if log_cfg is not None:
         log_file = Path('logs') / Path(log_cfg['experiment_name'] + ".json")
-        with open(log_file, "w") as fd:
-            fd.write("[")
+        start_log(log_file)
+
     log_metrics = {}
 
     if cfg['use_gpu'] != -1:
@@ -48,24 +49,39 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
     loss = nn.CrossEntropyLoss()
     def train_epoch(epoch=0, step_update=-1, c_step=0):
         e_loss = 0
-        
-        for i, sample in enumerate(train_data):
-            c_step += 1
+        pds = torch.tensor([]).to("cuda")
+        gts = torch.tensor([]).to("cuda")
 
-            im, lb = sample
-            opt.zero_grad()
+        with tqdm(train_data, unit="batch") as tepoch:
+            for sample in tepoch:
+                tepoch.set_description(f"Epoch {epoch}")
+                c_step += 1
 
-            logits = model(im)
-            c_loss = loss(logits, lb.squeeze(1))
+                im, lb = sample
+                opt.zero_grad()
 
-            c_loss.backward()
-            opt.step()
-            e_loss += c_loss.item()
+                logits = model(im)
+                lb = lb.squeeze(1)
+                c_loss = loss(logits, lb)
 
-            if step_update != -1 and c_step % step_update == 0:
-                print(f"Epoch {epoch} at step {i}: Loss - {c_loss.item()}")
+                c_loss.backward()
+                opt.step()
+                e_loss += c_loss.item()
 
-        return e_loss/len(train_data)
+                pd = logits.max(1).indices
+                pds = torch.cat([pd,pds])
+                gts = torch.cat([lb,gts])
+
+                tepoch.set_postfix(loss=c_loss.item())
+                if step_update != -1 and c_step % step_update == 0:
+                    print(f"Epoch {epoch} at step {i}: Loss - {c_loss.item()}")
+
+        avg_loss = e_loss/len(train_data)
+        pds = pds.to(torch.int64)
+        gts = gts.to(torch.int64)
+        train_metrics = gen_metrics(gts, pds, pt="train", loss=avg_loss)
+
+        return avg_loss, train_metrics
 
     if cfg['es_metric'].endswith("loss"):
         best_metric = 1e5
@@ -78,20 +94,20 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
     for epoch in range(1, cfg['epochs']+1):
         print(f"Starting epoch {epoch}")
 
-        epoch_loss = train_epoch(epoch, -1)
+        epoch_loss, tm = train_epoch(epoch, -1)
         log_metrics['epoch'] = epoch
 
-        tm = calc_metrics(model, train_data, "train")
-        print(tm)
+        #print(tm)
         log_metrics.update(tm)
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
             vm = calc_metrics(model, valid_data, "val", get_loss=True, loss=loss)
-            print(vm)
+            #print(vm)
             log_metrics.update(vm)
 
-        print(json.dumps(log_metrics))
+        print(dict_to_table(log_metrics))
+        #print(json.dumps(log_metrics))
         if log_cfg is not None:
             log_metrics_json(log_metrics, log_file)
 
@@ -115,8 +131,7 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
         log_metrics.update(vm)
     if log_cfg is not None:
         log_metrics_json(log_metrics, log_file)
-        with open(log_file, "a") as fd:
-            fd.write("\{\}]")
+        end_log(log_file)
 
     return model, log_metrics
 
