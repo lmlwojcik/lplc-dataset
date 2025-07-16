@@ -140,7 +140,7 @@ def train_yolo(yolo, cfg, dataset, save_dir=None):
         cfg['project'] = Path(pjdir)
 
         if pjdir.exists():
-            shutil.rmtree(pjdir)    
+            shutil.rmtree(pjdir)
         print("Project dir:", pjdir)
 
     yolo.train(data=dataset['dir'], **cfg)

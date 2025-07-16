@@ -49,7 +49,6 @@ def gen_metrics(gts, pds, pt="train", return_matrix=False, loss=None):
         metrics[f"{pt}_loss"] = loss
 
     if return_matrix:
-        print(gts.shape, pds.shape)
         metrics[f"{pt}_matrix"] = multiclass_confusion_matrix(pds,gts,num_classes=4).tolist()
     return metrics
 
