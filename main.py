@@ -11,9 +11,15 @@ def main(config, do_train, do_test, do_predict, partition, load_model, dataset, 
         cfg = json.load(fd)
     if run_name is not None:
         print(f"Starting run: {run_name}")
-        tag = "save_path" if cfg['model_name'] != 'yolo' else "name"
-        cfg['train_config'][tag] += "/" + run_name
-        cfg['test_config']['save_path'] += "/" + run_name
+        if cfg['model_name'] != 'yolo':
+            tag = "save_path"
+            cfg['train_config'][tag] += "/" + run_name
+            cfg['test_config']['save_path'] += "/" + run_name
+        else:
+            tag = "name"
+            cfg['train_config'][tag] = run_name
+            cfg['test_config'][tag] = run_name
+            cfg['test_config']['save_path'] += "/" + run_name
     else:
         print("Starting run")
     tag = "path" if cfg['model_name'] != 'yolo' else "dir"
@@ -21,7 +27,7 @@ def main(config, do_train, do_test, do_predict, partition, load_model, dataset, 
         cfg['data'][tag] = dataset
     print(f"Dataset partition: {cfg['data'][tag]}")
     n_classes = len(glob(f"{dataset}/train/*"))
-    print(n_classes)
+    print(f"This protocol has {n_classes} classes.")
 
     model_name = cfg['model_name']
 

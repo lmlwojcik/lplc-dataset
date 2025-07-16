@@ -136,12 +136,12 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
 def train_yolo(yolo, cfg, dataset, save_dir=None):
 
     if save_dir is not None:
-        pjdir = Path(save_dir) / Path(cfg['name'])
+        pjdir = Path(save_dir)# / Path(cfg['name'])
         cfg['project'] = Path(pjdir)
+        run_dir = pjdir / Path(cfg['name'])
 
-        if pjdir.exists():
-            shutil.rmtree(pjdir)
-        print("Project dir:", pjdir)
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
 
     yolo.train(data=dataset['dir'], **cfg)
 

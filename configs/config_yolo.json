@@ -2,7 +2,7 @@
     "model_name": "yolo",
     "yolo_path": "weights/yolo11m-cls.pt",
     "freeze": false,
-    "save_path": "saved/",
+    "save_path": "saved/yolo/",
     "train_config": {
         "patience": 20,
         "pretrained": true,
@@ -14,7 +14,7 @@
         "val": true,
         "warmup_bias_lr": 0.1,
 
-        "freeze": 10,
+        "freeze": -1,
 
         "multi_scale": true,
         "name": "yolo"
@@ -25,7 +25,7 @@
     "test_config": {
         "batch": 32,
         "imgsz": [90, 180],
-        "name": "yolov0_pred",
-        "save_path": "yolov0_pred"
+        "name": "yolov0",
+        "save_path": "saved/yolo/"
     }
 }
