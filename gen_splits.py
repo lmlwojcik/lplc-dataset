@@ -164,8 +164,8 @@ if __name__ == "__main__":
     parser.add_argument('--config', default=None)
     parser.add_argument('--class_config', default=None)
 
-    parser.add_argument('--dataset_dir', default="LPSD_Dataset/lps")
-    parser.add_argument('--output_dir', default="LPSD_Dataset/folds")
+    parser.add_argument('--dataset_dir', default="LPRD_Dataset/lps")
+    parser.add_argument('--output_dir', default="LPRD_Dataset/folds")
     parser.add_argument('--do_shuffle', default=False, action='store_true')
     parser.add_argument('--folds', default=5)
     parser.add_argument('--cross_fold', default=False, action='store_true')
