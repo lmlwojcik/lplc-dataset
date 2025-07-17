@@ -1,7 +1,6 @@
 from torch.utils.data import Dataset
-from torchvision.transforms import Resize, ToTensor, Compose
+from torchvision.transforms import ToTensor, Compose
 import torch
-import random
 
 import os
 import cv2
@@ -40,7 +39,7 @@ class LPSD_Dataset(Dataset):
         if device == -1:
             device = "cpu"
         self.device = torch.device(device)
-        self.files = sorted(list(glob(f"{sldir}/{partition}/*/*.jpg")))
+        self.files = sorted(list(glob(f"{sldir}/{partition}/*/*")))
         self.imgsz = imgsz
         self.transform = Compose([
             ToTensor()

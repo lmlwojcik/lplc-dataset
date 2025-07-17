@@ -2,7 +2,10 @@ from torchvision.models import vit_b_16
 from ultralytics import YOLO
 from torchvision.models import resnet50
 
+import torch
 from torch import nn
+
+from models.utils import find_model
 
 # Workaround for the case where the torch ssl certificate expires
 import ssl
@@ -121,3 +124,20 @@ def create_yolo(cfg):
 
     return yolo
 
+def get_model_with_weights(cfg, load_model):
+    if cfg['model_name'] == 'small':
+        model = create_base_small(cfg)
+    elif cfg['model_name'] == 'resnet':
+        model = create_resnet(cfg)
+    else:
+        model = create_vit(cfg)
+    
+    if load_model is not None:
+        ckpt = torch.load(load_model)
+    else:
+        ckpt = torch.load(find_model(cfg['save_path']))
+    model.load_state_dict(ckpt)
+
+    if cfg['use_gpu'] != -1:
+        model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
+    return model
