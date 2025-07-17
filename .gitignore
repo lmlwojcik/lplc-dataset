@@ -5,5 +5,7 @@ sldir/
 LPRD_Dataset
 saved/
 logs/*
-!logs/.gitkeep
+!logs/results_example.json
+!logs/training_example.json
+
 weights/
