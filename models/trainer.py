@@ -49,7 +49,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
     
-    def train_epoch(epoch=0, step_update=-1, c_step=0):
+    def train_epoch(epoch=0, c_step=0):
         e_loss = 0
         pds = torch.tensor([]).to("cuda")
         gts = torch.tensor([]).to("cuda")
@@ -75,8 +75,6 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
                 gts = torch.cat([lb,gts])
 
                 tepoch.set_postfix(loss=c_loss.item())
-                if step_update != -1 and c_step % step_update == 0:
-                    print(f"Epoch {epoch} at step {i}: Loss - {c_loss.item()}")
 
         avg_loss = e_loss/len(train_data)
         pds = pds.to(torch.int64)
