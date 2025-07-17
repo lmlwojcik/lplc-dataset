@@ -1,11 +1,11 @@
 {
-    "model_name": "vit",
-    "vit_weights": "IMAGENET1K_V1",
+    "model_name": "small",
+    "yaml": "configs/baseline.yaml",
     "freeze": false,
-    "save_path": "saved/vit",
+    "save_path": "saved/small",
 
     "log_config": {
-        "experiment_name": "vit_v0",
+        "experiment_name": "small",
         "loss_log": {
             "method": "epoch",
             "metrics": ["train_loss", "val_loss"],
@@ -20,6 +20,7 @@
     },
     "data": {
         "path": "sldir/scen0/0_1/",
-        "imgsz": [224, 224]
+        "imgsz": [64, 192]
     }
+    
 }

@@ -1,0 +1,4 @@
+{
+    "use_gpu": 0,
+    "batch_size": 16
+}

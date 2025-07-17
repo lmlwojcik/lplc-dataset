@@ -2,32 +2,8 @@
     "model_name": "resnet",
     "resnet_weights": "IMAGENET1K_V1",
     "freeze": false,
-    "train_config": {
-        "use_gpu": 0,
-        "optim": "sgd",
-        "optim_config": {
-            "lr": 1e-5,
-            "weight_decay": 1e-4,
-            "momentum": 0.9
-        },
-        "batch_size": 16,
-        "shuffle": true,
-        "epochs": 200,
+    "save_path": "saved/resnet",
 
-        "validate": true,
-        "do_es": true,
-        "patience": 20,
-        "es_metric": "val_acc",
-
-        "save_last": true,
-        "save_best": true,
-        "save_path": "saved/resnet"
-    },
-    "test_config": {
-        "use_gpu": 0,
-        "batch_size": 16,
-        "save_path": "saved/resnet"
-    },
     "log_config": {
         "experiment_name": "resnet_v0",
         "loss_log": {

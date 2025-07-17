@@ -1,0 +1,18 @@
+{
+    "use_gpu": 0,
+    "optim": "sgd",
+    "optim_config": {
+        "lr": 8e-4
+    },
+    "batch_size": 16,
+    "shuffle": true,
+    "epochs": 2,
+
+    "validate": true,
+    "do_es": true,
+    "patience": 20,
+    "es_metric": "val_acc",
+
+    "save_last": true,
+    "save_best": true
+}

@@ -1,0 +1,43 @@
+architecture:
+  - Conv2d:
+      kernel_size: 3
+      in_channels: 3
+      out_channels: 16
+      stride: 1
+      padding: same
+  - MaxPool2d:
+      kernel_size: 2
+      stride: 2
+  - BatchNorm2d:
+      args: [16]
+  - ReLU:
+  - Conv2d:
+      kernel_size: 3
+      in_channels: 16
+      out_channels: 32
+      stride: 1
+      padding: same
+  - MaxPool2d:
+      kernel_size: 2
+      stride: 2
+  - BatchNorm2d:
+      args: [64]
+  - ReLU:
+  - Conv2d:
+      kernel_size: 3
+      in_channels: 32
+      out_channels: 64
+      stride: 1
+      padding: same
+  - MaxPool2d:
+      kernel_size: 2
+      stride: 2
+  - BatchNorm2d:
+      args: [64]
+  - ReLU:
+  - Flatten:
+  - Linear:
+      args: [11280, 128]
+  - ReLU:
+  - Linear:
+      args: [128, 4]
