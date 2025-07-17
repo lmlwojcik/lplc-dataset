@@ -3,29 +3,8 @@
     "yolo_path": "weights/yolo11m-cls.pt",
     "freeze": false,
     "save_path": "saved/yolo/",
-    "train_config": {
-        "patience": 20,
-        "pretrained": true,
-        "classes": 4,
-        "cos_lr": true,
-        "batch": 16,
-        "epochs": 200,
-        "imgsz": [90, 180],
-        "val": true,
-        "warmup_bias_lr": 0.1,
-
-        "freeze": -1,
-
-        "multi_scale": true,
-        "name": "yolo"
-    },
+    "name": "yolo",
     "data": {
         "dir": "sldir/scen0/0_1/"
-    },
-    "test_config": {
-        "batch": 32,
-        "imgsz": [90, 180],
-        "name": "yolov0",
-        "save_path": "saved/yolo/"
     }
 }

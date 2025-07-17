@@ -1,0 +1,16 @@
+{
+    "patience": 20,
+    "pretrained": true,
+    "classes": 4,
+    "cos_lr": true,
+    "batch": 16,
+    "epochs": 1,
+    "imgsz": [90, 180],
+    "val": true,
+    "warmup_bias_lr": 0.1,
+
+    "freeze": -1,
+
+    "multi_scale": true,
+    "name": "yolo"
+}
