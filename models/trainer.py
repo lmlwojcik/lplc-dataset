@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from pathlib import Path
 import shutil
-import os
+from glob import glob
 
 from dataset.dataset_utils import LPSD_Dataset
 from models.eval import calc_metrics, gen_metrics
@@ -135,19 +135,6 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
     return model, log_metrics
 
-def train_yolo(yolo, cfg, dataset, save_dir=None):
-
-    if save_dir is not None:
-        pjdir = Path(save_dir)# / Path(cfg['name'])
-        cfg['project'] = Path(pjdir)
-        run_dir = pjdir / Path(cfg['name'])
-
-        if run_dir.exists():
-            shutil.rmtree(run_dir)
-
-    yolo.train(data=dataset['dir'], **cfg)
-    return yolo, None
-
 def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu'])
 
@@ -198,24 +185,51 @@ def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None
     ret = {'metrics': metrics, 'file_predicts': file_predicts}
     return ret
 
-def test_yolo(model, cfg, dataset, partition='test', load_model=None):
+def train_yolo(yolo, cfg, dataset, save_dir=None):
+
+    if save_dir is not None:
+        pjdir = Path(save_dir)# / Path(cfg['name'])
+        cfg['project'] = Path(pjdir)
+        run_dir = pjdir / Path(cfg['name'])
+
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
+
+    yolo.train(data=dataset['dir'], **cfg)
+    return yolo, None
+
+def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, return_preds=False):
     if model is None:
         if load_model is not None:
             model = YOLO(load_model)
         else:
-            model = YOLO(f"{cfg['save_path']}/weights/best.pt")
+            model = YOLO(f"{g_cfg['save_path']}/{g_cfg['name']}/weights/best.pt")
 
-    dts = LPSD_Dataset(dataset['dir'], partition, imgsz=cfg["imgsz"], device=-1)
+    fs = glob(f"{dataset['dir']}/{partition}/*/*")
+    results = model(fs, batch=cfg['batch'], stream=True)
+
     gts = []
     pds = []
-    for g in tqdm(dts.files):
-        if not os.path.exists(g):
-            continue
-    
-        r = model(([g]))[0]
 
+    if return_preds:
+        file_predicts = []
+        for r,f in zip(results,fs):
+            pd = r.probs.top1
+            gt = int(f.split("/")[-2])
+
+            pds.append(pd)
+            gts.append(gt)
+
+            file_predicts.append({"fname": f.split("/")[-1], "gt": gt, "pd": pd})
+        metrics = gen_metrics(torch.tensor(gts,dtype=torch.int64),
+                              torch.tensor(pds,dtype=torch.int64),
+                              pt=partition,return_matrix=True)
+        ret = {"metrics": metrics, "file_predicts": file_predicts}
+        return ret
+
+    for r,f in zip(results,fs):
         pd = r.probs.top1
-        gt = int(g.split("/")[-2])
+        gt = int(f.split("/")[-2])
 
         gts.append(gt)
         pds.append(pd)
@@ -223,4 +237,7 @@ def test_yolo(model, cfg, dataset, partition='test', load_model=None):
     return gen_metrics(torch.tensor(gts,dtype=torch.int64),
                        torch.tensor(pds,dtype=torch.int64)
                        ,pt=partition,return_matrix=True)
+
+def predict_yolo(model, dataset, g_cfg, partition='test', load_model=None):
+    return test_yolo(model, {'batch': 1}, dataset, g_cfg, partition, load_model, return_preds=True)
 

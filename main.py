@@ -4,21 +4,17 @@ import json
 from pathlib import Path
 
 from models.models import create_yolo, create_resnet, create_vit, create_baseline
-from models.trainer import train_torch_model, train_yolo, test_torch_model, test_yolo, predict_torch_model
+from models.trainer import train_torch_model, train_yolo, test_torch_model, test_yolo, predict_torch_model, predict_yolo
 
 def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model, dataset, run_name):
     
     if run_name is not None:
         print(f"Starting run: {run_name}")
         if cfg['model_name'] != 'yolo':
-            tag = "save_path"
-            #train_cfg[tag] += "/" + run_name
             cfg['save_path'] += "/" + run_name
         else:
-            tag = "name"
-            train_cfg[tag] = run_name
-            test_cfg[tag] = run_name
-            test_cfg['save_path'] += "/" + run_name
+            cfg["name"] = run_name
+            train_cfg['name'] = run_name
     else:
         print("Starting run")
 
@@ -60,7 +56,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model,
 
     if test_cfg is not None:
         if model_name == 'yolo':
-            test_results = test_yolo(model, test_cfg, cfg['data'], partition, load_model)
+            test_results = test_yolo(model, test_cfg, cfg['data'], cfg, partition, load_model)
         else:
             test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model)
         results.update(test_results)
@@ -69,7 +65,10 @@ def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model,
             json.dump(results, fd, indent=2)
 
     if do_predict:
-        predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model)
+        if model_name == 'yolo':
+            predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model)
+        else:
+            predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model)
         print(predict_results['metrics'])
         with open(Path(cfg['save_path']) / f"predict_results_{partition}.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
@@ -126,12 +125,14 @@ if __name__ == '__main__':
     if clargs['device'] is not None:
         if len(clargs['device']) == 1:
             clargs['device'] = f"cuda:{clargs['device']}"
-        update_cfgs(train_cfg, test_cfg, clargs, 'use_gpu', 'device')
+        update_cfgs(train_cfg, test_cfg, clargs,
+                        "use_gpu" if cfg['model_name'] != "yolo" else "device", 'device')
         cfg['use_gpu'] = clargs['device']
 
     if clargs['batch_size'] is not None:
         clargs['batch_size'] = int(clargs['batch_size'])
-        update_cfgs(train_cfg, test_cfg, clargs, 'batch_size', 'batch_size')
+        update_cfgs(train_cfg, test_cfg, clargs,
+                        "batch_size" if cfg['model_name'] != "yolo" else "batch", 'batch_size')
 
     args = {
         'cfg': cfg,
