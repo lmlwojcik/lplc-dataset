@@ -46,16 +46,12 @@ class CNN_Baseline_Small(nn.Module):
         o = self.layer8(o)
         return o
 
-def create_base_small(cfg, n_classes=4):
-    if "yaml" in cfg.keys():
-        with open(cfg['yaml'], 'r') as fd:
+def create_baseline(model_cfg, n_classes=4):
+    if model_cfg is not None:
+        with open(model_cfg, 'r') as fd:
             ncfg = yaml.safe_load(fd)
         return build_network(ncfg['architecture'])
     cnn = CNN_Baseline_Small(n_classes)
-    return cnn
-
-def create_baseline(cfg, n_classes=4):
-    cnn = CNN_Baseline(n_classes)
     return cnn
 
 def create_vit(cfg, n_classes=4):
@@ -89,9 +85,9 @@ def create_yolo(cfg):
 
     return yolo
 
-def get_model_with_weights(cfg, load_model):
+def get_model_with_weights(cfg, load_model, device):
     if cfg['model_name'] == 'small':
-        model = create_base_small(cfg)
+        model = create_baseline(cfg)
     elif cfg['model_name'] == 'resnet':
         model = create_resnet(cfg)
     else:
@@ -103,6 +99,8 @@ def get_model_with_weights(cfg, load_model):
         ckpt = torch.load(find_model(cfg['save_path']))
     model.load_state_dict(ckpt)
 
-    if cfg['use_gpu'] != -1:
-        model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
+    if device != -1:
+        if len(device) == 1:
+            device = f"cuda:{device}"
+        model.to(torch.device(f"{device}"))
     return model

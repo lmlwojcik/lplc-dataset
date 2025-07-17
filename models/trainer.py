@@ -15,8 +15,8 @@ from models.eval import calc_metrics, gen_metrics
 from models.utils import start_log, end_log, log_metrics_json, dict_to_table
 from models.models import get_model_with_weights
 
-def train_torch_model(model, cfg, dataset, log_cfg=None):
-    save_path = Path(cfg['save_path'])
+def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
+    save_path = Path(save_path)
     save_path.mkdir(parents=True,exist_ok=True)
 
     train_data = DataLoader(
@@ -39,13 +39,16 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
     log_metrics = {}
 
     if cfg['use_gpu'] != -1:
-        model.to(torch.device(f"cuda:{cfg['use_gpu']}"))
+        if len(cfg['use_gpu']) == 1:
+            cfg['use_gpu'] = f"cuda:{cfg['use_gpu']}"
+        model.to(torch.device(f"{cfg['use_gpu']}"))
 
     if cfg['optim'] == "adam":
         opt = Adam(model.named_parameters(), **cfg['optim_config'])
     elif cfg['optim'] == "sgd":
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
+    
     def train_epoch(epoch=0, step_update=-1, c_step=0):
         e_loss = 0
         pds = torch.tensor([]).to("cuda")
@@ -116,11 +119,11 @@ def train_torch_model(model, cfg, dataset, log_cfg=None):
                 cnt = 0
                 
                 if cfg['save_best']:
-                    torch.save(model.state_dict(), Path(cfg['save_path']) / Path("model_best.pth"))
+                    torch.save(model.state_dict(), save_path / Path("model_best.pth"))
             if cnt >= cfg['patience']:
                 break
     if cfg['save_last']:
-        torch.save(model.state_dict(), Path(cfg['save_path']) / Path(f"model_last_epoch_{epoch}.pth"))
+        torch.save(model.state_dict(), save_path / Path(f"model_last_epoch_{epoch}.pth"))
 
     if epoch == 0:
         log_metrics = calc_metrics(model, train_data, "train")
@@ -145,7 +148,7 @@ def train_yolo(yolo, cfg, dataset, save_dir=None):
     yolo.train(data=dataset['dir'], **cfg)
     return yolo, None
 
-def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
+def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu'])
 
     test_data = DataLoader(
@@ -156,13 +159,14 @@ def test_torch_model(model, cfg, dataset, partition='test', load_model=None):
 
     # We jump here without training, model must be loaded from memory
     if model is None:
-        model = get_model_with_weights(cfg, load_model)
+        model = get_model_with_weights(g_cfg, load_model, cfg['use_gpu'])
 
-    metrics = calc_metrics(model, test_data, pt=partition, return_matrix=True)
+    print("Running test")
+    metrics = calc_metrics(model, test_data, pt=partition, return_matrix=True, verbose=True, n_classes=g_cfg['n_classes'])
     return metrics
 
-def predict_torch_model(model, cfg, dataset, partition='test', load_model=None):
-    dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu'])
+def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None):
+    dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=g_cfg['use_gpu'])
     test_data = DataLoader(
         dts,
         batch_size=1,
@@ -171,7 +175,7 @@ def predict_torch_model(model, cfg, dataset, partition='test', load_model=None):
 
     # We jump here without training, model must be loaded from memory
     if model is None:
-        model = get_model_with_weights(cfg, load_model)
+        model = get_model_with_weights(g_cfg, load_model, g_cfg['use_gpu'])
 
     file_predicts = []
     gts = []
@@ -186,7 +190,11 @@ def predict_torch_model(model, cfg, dataset, partition='test', load_model=None):
 
         file_predicts.append({"fname": f, "gt": lb.item(), "pd": pd.item()})
 
-    metrics = gen_metrics(torch.tensor(gts),torch.tensor(pds),pt=partition,return_matrix=True)
+    metrics = gen_metrics(torch.tensor(gts),torch.tensor(pds),
+                        pt=partition,
+                        return_matrix=True,
+                        n_classes=g_cfg['n_classes']
+                    )
     ret = {'metrics': metrics, 'file_predicts': file_predicts}
     return ret
 
@@ -200,7 +208,7 @@ def test_yolo(model, cfg, dataset, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['dir'], partition, imgsz=cfg["imgsz"], device=-1)
     gts = []
     pds = []
-    for idx,g in enumerate(dts.files):
+    for g in tqdm(dts.files):
         if not os.path.exists(g):
             continue
     

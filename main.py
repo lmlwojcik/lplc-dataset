@@ -3,30 +3,31 @@ from glob import glob
 import json
 from pathlib import Path
 
-from models.models import create_yolo, create_resnet, create_vit, create_baseline, create_base_small
+from models.models import create_yolo, create_resnet, create_vit, create_baseline
 from models.trainer import train_torch_model, train_yolo, test_torch_model, test_yolo, predict_torch_model
 
-def main(config, do_train, do_test, do_predict, partition, load_model, dataset, run_name):
-    with open(config, "r") as fd:
-        cfg = json.load(fd)
+def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model, dataset, run_name):
+    
     if run_name is not None:
         print(f"Starting run: {run_name}")
         if cfg['model_name'] != 'yolo':
             tag = "save_path"
-            cfg['train_config'][tag] += "/" + run_name
-            cfg['test_config']['save_path'] += "/" + run_name
+            #train_cfg[tag] += "/" + run_name
+            cfg['save_path'] += "/" + run_name
         else:
             tag = "name"
-            cfg['train_config'][tag] = run_name
-            cfg['test_config'][tag] = run_name
-            cfg['test_config']['save_path'] += "/" + run_name
+            train_cfg[tag] = run_name
+            test_cfg[tag] = run_name
+            test_cfg['save_path'] += "/" + run_name
     else:
         print("Starting run")
+
     tag = "path" if cfg['model_name'] != 'yolo' else "dir"
     if dataset is not None:
         cfg['data'][tag] = dataset
     print(f"Dataset partition: {cfg['data'][tag]}")
     n_classes = len(glob(f"{dataset}/train/*"))
+    cfg['n_classes'] = n_classes
     print(f"This protocol has {n_classes} classes.")
 
     model_name = cfg['model_name']
@@ -37,21 +38,19 @@ def main(config, do_train, do_test, do_predict, partition, load_model, dataset, 
         model = create_resnet(cfg, n_classes)
     elif model_name == 'vit':
         model = create_vit(cfg, n_classes)
-    elif model_name == 'base':
-        model = create_baseline(cfg, n_classes)
     elif model_name == 'small':
-        model = create_base_small(cfg, n_classes)
+        model = create_baseline(model_cfg, n_classes)
     else:
-        print("Error -- model must be one of: yolo, resnet, vit, base, small")
+        print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()
 
-    if do_train:
+    if train_cfg is not None:
         if model_name == 'yolo':
-            model, results = train_yolo(model, cfg['train_config'], cfg['data'], cfg['save_path'])
+            model, results = train_yolo(model, train_cfg, cfg['data'], cfg['save_path'])
         else:
-            model, results = train_torch_model(model, cfg['train_config'], cfg['data'], cfg['log_config'])
+            model, results = train_torch_model(model, train_cfg, cfg['data'], cfg['save_path'], cfg['log_config'])
         if results is not None:
-            with open(Path(cfg['train_config']['save_path']) / "train_results.json", "w") as fd:
+            with open(Path(cfg['save_path']) / "train_results.json", "w") as fd:
                 json.dump(results, fd, indent=2)
         else:
             results = {}
@@ -59,36 +58,95 @@ def main(config, do_train, do_test, do_predict, partition, load_model, dataset, 
         model = None
         results = {}
 
-    if do_test:
+    if test_cfg is not None:
         if model_name == 'yolo':
-            test_results = test_yolo(model, cfg['train_config'], cfg['data'], partition, load_model)
+            test_results = test_yolo(model, test_cfg, cfg['data'], partition, load_model)
         else:
-            test_results = test_torch_model(model, cfg['test_config'], cfg['data'], partition, load_model)
+            test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model)
         results.update(test_results)
         print(json.dumps(results, indent=2))
-        with open(Path(cfg['test_config']['save_path']) / "all_results.json", "w") as fd:
+        with open(Path(cfg['save_path']) / "all_results.json", "w") as fd:
             json.dump(results, fd, indent=2)
 
     if do_predict:
-        predict_results = predict_torch_model(model, cfg['test_config'], cfg['data'], partition, load_model)
+        predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model)
         print(predict_results['metrics'])
-        with open(Path(cfg['test_config']['save_path']) / f"predict_results_{partition}.json", "w") as fd:
+        with open(Path(cfg['save_path']) / f"predict_results_{partition}.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
-
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
     parser.add_argument('-c', '--config', default="configs/config_yolo.json")
-    parser.add_argument('-t', '--do_train', default=False, action='store_true')
-    parser.add_argument('-v', '--do_test', default=False, action='store_true')
+    parser.add_argument('-mc', '--model_config', default=None)
+
+    parser.add_argument('-d', '--device', default='cpu')
+    parser.add_argument('-bs', '--batch_size', default=None)
+
+    parser.add_argument('-t', '--train_config', default=None)
+    parser.add_argument('-v', '--test_config', default=None)
+
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test")
     parser.add_argument('-n', '--run_name', default=None)
-    parser.add_argument('-d', '--dataset', default=None)
+
+    parser.add_argument('-dt', '--dataset', default=None)
     parser.add_argument('-m', '--load_model', default=None)
 
-    args = vars(parser.parse_args())
-    
+    clargs = vars(parser.parse_args())
+
+    config = clargs['config']
+    with open(config, "r") as fd:
+        cfg = json.load(fd)
+
+    if clargs['train_config'] is None:
+        if 'train_config' in cfg.keys():
+            train_cfg = config['train_config']
+        else:
+            train_cfg = None
+    else:
+        with open(clargs['train_config'], "r") as fd:
+            train_cfg = json.load(fd)
+
+    if clargs['test_config'] is None:
+        if 'test_config' in cfg.keys():
+            test_cfg = config['test_config']
+        else:
+            test_cfg = None
+    else:
+        with open(clargs['test_config'], "r") as fd:
+            test_cfg = json.load(fd)
+
+    def update_cfgs(tr_cfg, te_cfg, clarg, cfg_name, arg_name):
+        if tr_cfg is not None:
+            tr_cfg[cfg_name] = clarg[arg_name]
+        if te_cfg is not None:
+            te_cfg[cfg_name] = clarg[arg_name]
+
+    if clargs['device'] is not None:
+        if len(clargs['device']) == 1:
+            clargs['device'] = f"cuda:{clargs['device']}"
+        update_cfgs(train_cfg, test_cfg, clargs, 'use_gpu', 'device')
+        cfg['use_gpu'] = clargs['device']
+
+    if clargs['batch_size'] is not None:
+        clargs['batch_size'] = int(clargs['batch_size'])
+        update_cfgs(train_cfg, test_cfg, clargs, 'batch_size', 'batch_size')
+
+    args = {
+        'cfg': cfg,
+        'model_cfg': clargs['model_config'],
+        'train_cfg': train_cfg,
+        'test_cfg': test_cfg,
+
+        'do_predict': clargs['do_predict'],
+        'partition': clargs['partition'],
+        'load_model': clargs['load_model'],
+        'dataset': clargs['dataset'],
+        'run_name': clargs['run_name']
+    }
+
+    if args['dataset'] is None:
+        args['dataset'] = cfg['data']['path']
+
     main(**args)
