@@ -1,5 +1,6 @@
 {
     "model_name": "small",
+    "yaml": "configs/baseline.yaml",
     "freeze": false,
     "train_config": {
         "use_gpu": 0,
@@ -9,7 +10,7 @@
         },
         "batch_size": 16,
         "shuffle": false,
-        "epochs": 200,
+        "epochs": 500,
 
         "validate": true,
         "do_es": true,
@@ -23,7 +24,8 @@
     "test_config": {
         "use_gpu": 0,
         "batch_size": 16,
-        "save_path": "saved/base_small"
+        "save_path": "saved/base_small",
+        "model_name": "small"
     },
     "log_config": {
         "experiment_name": "vit_v0",
