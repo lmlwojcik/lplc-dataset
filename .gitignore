@@ -6,3 +6,4 @@ LPRD_Dataset
 saved/
 logs/*
 !logs/.gitkeep
+weights/
