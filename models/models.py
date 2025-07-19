@@ -46,11 +46,11 @@ class CNN_Baseline_Small(nn.Module):
         o = self.layer8(o)
         return o
 
-def create_baseline(model_cfg, n_classes=4):
+def create_baseline(model_cfg, n_features=128, n_classes=4):
     if model_cfg is not None:
         with open(model_cfg, 'r') as fd:
             ncfg = yaml.safe_load(fd)
-        return build_network(ncfg['architecture'])
+        return build_network(ncfg['architecture'], n_fts=n_features, n_cls=n_classes)
     cnn = CNN_Baseline_Small(n_classes)
     return cnn
 

@@ -3,10 +3,26 @@ from glob import glob
 import json
 from pathlib import Path
 
-from models.models import create_yolo, create_resnet, create_vit, create_baseline
-from models.trainer import train_torch_model, train_yolo, test_torch_model, test_yolo, predict_torch_model, predict_yolo
+from models.models import (
+    create_yolo,
+    create_resnet,
+    create_vit,
+    create_baseline
+)
 
-def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model, dataset, run_name):
+from models.trainer import (
+    train_torch_model,
+    train_yolo,
+    test_torch_model,
+    test_yolo,
+    predict_torch_model,
+    predict_yolo
+)
+
+def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
+         do_predict, partition, load_model,   # For gathering predictions
+         dataset, run_name, n_features        # Per-run experiment variables
+    ):
     
     if run_name is not None:
         print(f"Starting run: {run_name}")
@@ -35,7 +51,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, do_predict, partition, load_model,
     elif model_name == 'vit':
         model = create_vit(cfg, n_classes)
     elif model_name == 'small':
-        model = create_baseline(model_cfg, n_classes)
+        model = create_baseline(model_cfg, n_features, n_classes)
     else:
         print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()
@@ -91,6 +107,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-dt', '--dataset', default=None)
     parser.add_argument('-m', '--load_model', default=None)
+    parser.add_argument('-nf', '--n_features', default=None)
 
     clargs = vars(parser.parse_args())
 
@@ -134,6 +151,7 @@ if __name__ == '__main__':
         update_cfgs(train_cfg, test_cfg, clargs,
                         "batch_size" if cfg['model_name'] != "yolo" else "batch", 'batch_size')
 
+    print("C")
     args = {
         'cfg': cfg,
         'model_cfg': clargs['model_config'],
@@ -144,7 +162,8 @@ if __name__ == '__main__':
         'partition': clargs['partition'],
         'load_model': clargs['load_model'],
         'dataset': clargs['dataset'],
-        'run_name': clargs['run_name']
+        'run_name': clargs['run_name'],
+        'n_features': clargs['n_features']
     }
 
     if args['dataset'] is None:
