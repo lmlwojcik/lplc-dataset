@@ -42,6 +42,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         if len(cfg['use_gpu']) == 1:
             cfg['use_gpu'] = f"cuda:{cfg['use_gpu']}"
         model.to(torch.device(f"{cfg['use_gpu']}"))
+    print("Running experiments at ", cfg['use_gpu'])
 
     if cfg['optim'] == "adam":
         opt = Adam(model.named_parameters(), **cfg['optim_config'])
@@ -49,10 +50,10 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
     loss = nn.CrossEntropyLoss()
     
-    def train_epoch(epoch=0, c_step=0):
+    def train_epoch(epoch=0, c_step=0, device='cuda:0'):
         e_loss = 0
-        pds = torch.tensor([]).to("cuda")
-        gts = torch.tensor([]).to("cuda")
+        pds = torch.tensor([]).to(device)
+        gts = torch.tensor([]).to(device)
 
         with tqdm(train_data, unit="batch") as tepoch:
             for sample in tepoch:
@@ -93,14 +94,15 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     for epoch in range(1, cfg['epochs']+1):
         print(f"Starting epoch {epoch}")
 
-        epoch_loss, tm = train_epoch(epoch, -1)
+        epoch_loss, tm = train_epoch(epoch, -1, cfg['use_gpu'])
         log_metrics['epoch'] = epoch
 
         log_metrics.update(tm)
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
-            vm = calc_metrics(model, valid_data, "val", get_loss=True, loss=loss)
+            vm = calc_metrics(model, valid_data, "val",
+                              get_loss=True, loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
 
         print(dict_to_table(log_metrics))
@@ -124,8 +126,10 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         torch.save(model.state_dict(), save_path / Path(f"model_last_epoch_{epoch}.pth"))
 
     if epoch == 0:
-        log_metrics = calc_metrics(model, train_data, "train")
-        vm = calc_metrics(model, valid_data, "val")
+        log_metrics = calc_metrics(model, train_data, "train",
+                                   get_loss=True, loss=loss, device=cfg['use_gpu'])
+        vm = calc_metrics(model, valid_data, "val",
+                          get_loss=True, loss=loss, device=cfg['use_gpu'])
         log_metrics.update(vm)
     if log_cfg is not None:
         log_metrics_json(log_metrics, log_file)
@@ -147,7 +151,10 @@ def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=No
         model = get_model_with_weights(g_cfg, load_model, cfg['use_gpu'])
 
     print("Running test")
-    metrics = calc_metrics(model, test_data, pt=partition, return_matrix=True, verbose=True, n_classes=g_cfg['n_classes'])
+    metrics = calc_metrics(model, test_data, pt=partition,
+                           return_matrix=True, verbose=True,
+                           n_classes=g_cfg['n_classes'],
+                           device=cfg['use_gpu'])
     return metrics
 
 def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None):

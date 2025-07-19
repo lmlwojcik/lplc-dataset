@@ -8,9 +8,9 @@ from torcheval.metrics.functional import (
 
 import torch
 
-def eval_model(model, data, get_loss=False, loss=None, verbose=False):
-    pds = torch.tensor([]).to("cuda")
-    gts = torch.tensor([]).to("cuda")
+def eval_model(model, data, get_loss=False, loss=None, verbose=False, device=None):
+    pds = torch.tensor([]).to(device)
+    gts = torch.tensor([]).to(device)
 
     if get_loss:
         vloss = 0
@@ -55,6 +55,17 @@ def gen_metrics(gts, pds, pt="train", return_matrix=False, loss=None, n_classes=
         metrics[f"{pt}_matrix"] = multiclass_confusion_matrix(pds,gts,num_classes=4).tolist()
     return metrics
 
-def calc_metrics(model, data, pt="train", return_matrix=False, get_loss=False, loss=None, verbose=False, n_classes=4):
-    gts, pds, loss = eval_model(model, data, get_loss=get_loss, loss=loss, verbose=verbose)
+def calc_metrics(
+        model,
+        data,
+        pt="train", return_matrix=False,
+        get_loss=False, loss=None,
+        verbose=False,
+        n_classes=4,
+        device='cpu'
+    ):
+    gts, pds, loss = eval_model(model, data,
+                                get_loss=get_loss, loss=loss,
+                                verbose=verbose, device=device)
+
     return gen_metrics(gts,pds,pt,return_matrix, loss=loss, n_classes=n_classes)
