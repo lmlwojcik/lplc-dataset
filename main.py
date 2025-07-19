@@ -92,29 +92,29 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-c', '--config', default="configs/config_yolo.json")
-    parser.add_argument('-mc', '--model_config', default=None)
+    parser.add_argument('-c', '--config', default="configs/config_yolo.json", type=str)
+    parser.add_argument('-mc', '--model_config', default=None, type=str)
 
-    parser.add_argument('-d', '--device', default='cpu')
-    parser.add_argument('-bs', '--batch_size', default=None)
+    parser.add_argument('-d', '--device', default='cpu', type=str)
+    parser.add_argument('-bs', '--batch_size', default=None, type=int)
 
-    parser.add_argument('-t', '--train_config', default=None)
-    parser.add_argument('-v', '--test_config', default=None)
+    parser.add_argument('-t', '--train_config', default=None, type=str)
+    parser.add_argument('-v', '--test_config', default=None, type=str)
 
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
-    parser.add_argument('-pt', '--partition', default="test")
-    parser.add_argument('-n', '--run_name', default=None)
+    parser.add_argument('-pt', '--partition', default="test", type=str)
+    parser.add_argument('-n', '--run_name', default=None, type=str)
 
-    parser.add_argument('-dt', '--dataset', default=None)
-    parser.add_argument('-m', '--load_model', default=None)
-    parser.add_argument('-nf', '--n_features', default=None)
+    parser.add_argument('-dt', '--dataset', default=None, type=str)
+    parser.add_argument('-m', '--load_model', default=None, type=str)
+    parser.add_argument('-nf', '--n_features', default=None, type=int)
 
     clargs = vars(parser.parse_args())
 
     config = clargs['config']
     with open(config, "r") as fd:
         cfg = json.load(fd)
-
+    
     if clargs['train_config'] is None:
         if 'train_config' in cfg.keys():
             train_cfg = config['train_config']
@@ -147,7 +147,6 @@ if __name__ == '__main__':
         cfg['use_gpu'] = clargs['device']
 
     if clargs['batch_size'] is not None:
-        clargs['batch_size'] = int(clargs['batch_size'])
         update_cfgs(train_cfg, test_cfg, clargs,
                         "batch_size" if cfg['model_name'] != "yolo" else "batch", 'batch_size')
 
