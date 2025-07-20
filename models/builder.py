@@ -37,10 +37,11 @@ def build_network(architecture, n_fts=None, n_cls=None, builder=Builder(torch.nn
             alias = kwargs.pop("alias")
             if alias == "N_FT_LAYER" and n_fts is not None:
                 args[1] = n_fts
-            elif alias == "CLS_LAYER" and n_cls is not None:
-                args[1] = n_cls
+            elif alias == "CLS_LAYER":
                 if n_fts is not None:
                     args[0] = n_fts
+                if n_cls is not None:
+                    args[1] = n_cls
 
         layers.append(builder(name, *args, **kwargs))
     return torch.nn.Sequential(*layers)
