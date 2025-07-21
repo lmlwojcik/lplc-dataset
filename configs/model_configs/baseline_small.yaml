@@ -29,3 +29,4 @@ architecture:
   - ReLU:
   - Linear:
       args: [128, 4]
+  - Softmax:
