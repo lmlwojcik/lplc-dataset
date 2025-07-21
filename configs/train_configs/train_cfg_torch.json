@@ -1,11 +1,11 @@
 {
     "use_gpu": 0,
-    "optim": "adam",
+    "optim": "sgd",
     "optim_config": {
-        "lr": 1e-5
+        "lr": 1e-3
     },
     "batch_size": 16,
-    "shuffle": false,
+    "shuffle": true,
     "epochs": 1000,
 
     "validate": true,

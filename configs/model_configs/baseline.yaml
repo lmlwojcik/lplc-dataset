@@ -31,3 +31,4 @@ architecture:
   - Linear:
       args: [128, 4]
       alias: CLS_LAYER
+  - Softmax:

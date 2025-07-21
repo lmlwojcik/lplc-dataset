@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.optim import Adam, SGD
-#from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from ultralytics import YOLO
 from tqdm import tqdm
@@ -48,6 +48,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         opt = Adam(model.named_parameters(), **cfg['optim_config'])
     elif cfg['optim'] == "sgd":
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
+    scheduler = ReduceLROnPlateau(opt, 'min')
     loss = nn.CrossEntropyLoss()
     
     def train_epoch(epoch=0, c_step=0, device='cuda:0'):
@@ -104,6 +105,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
             vm = calc_metrics(model, valid_data, "val",
                               get_loss=True, loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
+        scheduler.step(log_metrics['val_loss'])
 
         print(dict_to_table(log_metrics))
         #print(json.dumps(log_metrics))

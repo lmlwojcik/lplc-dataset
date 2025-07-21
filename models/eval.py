@@ -20,6 +20,8 @@ def eval_model(model, data, get_loss=False, loss=None, verbose=False, device=Non
 
     if verbose:
         data = tqdm(data)
+        
+    model.eval()
     with torch.no_grad():
         for sample in data:
             im, lb = sample
