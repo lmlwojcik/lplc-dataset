@@ -3,7 +3,7 @@ import argparse
 from bokeh.plotting import figure, save
 from bokeh.io import export_png
 from bokeh.models import LinearColorMapper
-from bokeh.palettes import YlGn9
+from bokeh.palettes import all_palettes
 import numpy as np
 import pandas as pd
 
@@ -39,8 +39,9 @@ def main(config, log_file, results_file):
                           index=margs['fig_args']['x_range'],
                           columns=margs['fig_args']['y_range'])
         cm = pd.DataFrame(cm.stack(),columns=['val']).reset_index()
-        colors = list(YlGn9)[::-1]
-        mapper = LinearColorMapper(palette=colors, low=0.0, high=1.0)
+        colors = list(all_palettes['BuGn'][9])
+        colors.reverse()
+        mapper = LinearColorMapper(palette=colors, low=0.0, high=1793)
 
         fig = figure(**margs['fig_args'])
         fig.rect(
@@ -56,12 +57,20 @@ def main(config, log_file, results_file):
             x='level_1',
             y='level_0',
             text='val',
-            text_font_size='10pt',
+            text_font_size='12pt',
             x_offset=-30,
             y_offset=10
         )
-    
-        save(fig, "ex.html", title=margs['fig_args']['title'])
+        
+        fig.xaxis.axis_label = "Prediction"
+        fig.xaxis.axis_label_text_font_size = "16pt"    
+        fig.xaxis.major_label_text_font_size = "12pt"
+
+        fig.yaxis.axis_label = "Ground Truth"
+        fig.yaxis.axis_label_text_font_size = "16pt"    
+        fig.yaxis.major_label_text_font_size = "12pt"
+
+        save(fig, "ex.svg", title=margs['fig_args']['title'])
 
 
 if __name__ == '__main__':

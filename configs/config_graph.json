@@ -41,9 +41,9 @@
     "save_images": true,
     "cm": {
         "fig_args": {
-            "title": "Test Confusion Matrix",
-            "x_range": ["perfect", "legible", "damaged", "illegible"],
-            "y_range": ["illegible", "damaged", "legible", "perfect"]
+            "title": "",
+            "x_range": ["Perfect", "Legible", "Poor", "Illegible"],
+            "y_range": ["Illegible", "Poor", "Legible", "Perfect"]
         }
     }
 }
