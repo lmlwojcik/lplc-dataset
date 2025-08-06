@@ -51,7 +51,10 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     elif model_name == 'vit':
         model = create_vit(cfg, n_classes)
     elif model_name == 'small':
-        model = create_baseline(model_cfg, n_features, n_classes)
+        cfg['model_cfg'] = model_cfg
+        cfg['n_features'] = n_features
+        cfg['n_classes'] = n_classes
+        model = create_baseline(cfg['model_cfg'], n_features, n_classes)
     else:
         print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()
@@ -86,7 +89,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
         else:
             predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model)
         print(predict_results['metrics'])
-        with open(Path(cfg['save_path']) / f"predict_results_{partition}.json", "w") as fd:
+        with open(Path(cfg['save_path']) / f"predict_results_{partition}_with_logits.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
 
 if __name__ == '__main__':

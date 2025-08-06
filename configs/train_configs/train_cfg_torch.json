@@ -10,7 +10,7 @@
 
     "validate": true,
     "do_es": true,
-    "patience": 40,
+    "patience": 20,
     "es_metric": "val_acc",
 
     "save_last": true,

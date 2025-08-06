@@ -174,15 +174,18 @@ def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None
     file_predicts = []
     gts = []
     pds = []
-    for f, (im,lb) in zip(dts.files, test_data):
-        logits = model(im)
-        lb = lb.squeeze(1)
-        pd = logits.max(1).indices
+    model.eval()
+    with torch.no_grad():
+        for f, (im,lb) in zip(dts.files, test_data):
+            logits = model(im)
 
-        gts.append(lb)
-        pds.append(pd)
+            lb = lb.squeeze(1)
+            pd = logits.max(1).indices
 
-        file_predicts.append({"fname": f, "gt": lb.item(), "pd": pd.item()})
+            gts.append(lb)
+            pds.append(pd)
+
+            file_predicts.append({"fname": f, "gt": lb.item(), "pd": pd.item(), "logits": logits.tolist()})
 
     metrics = gen_metrics(torch.tensor(gts),torch.tensor(pds),
                         pt=partition,

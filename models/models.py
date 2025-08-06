@@ -87,7 +87,7 @@ def create_yolo(cfg):
 
 def get_model_with_weights(cfg, load_model, device):
     if cfg['model_name'] == 'small':
-        model = create_baseline(cfg)
+        model = create_baseline(cfg['model_cfg'], cfg['n_features'], cfg['n_classes'])
     elif cfg['model_name'] == 'resnet':
         model = create_resnet(cfg)
     else:
