@@ -31,7 +31,7 @@ def calc_metric_rid(metric, logits, n_cls=4):
     elif "acc" in metric:
         return f1_score(gt, pd, average="micro")
 
-def main(models, patterns, use_rid):
+def get_data(models, patterns, use_rid):
     all_data = {}
     all_data_rid = {}
     for m in models:
@@ -74,6 +74,14 @@ def main(models, patterns, use_rid):
             for k, v in data_rid.items():
                 all_data_rid[m][f"{pk}_rid"][k] = np.mean(v)
 
+    for m in models:
+        all_data[m].update(all_data_rid[m])
+
+    return all_data, list(data.keys())
+
+def main(models, patterns, use_rid):
+    all_data, metrics = get_data(models,patterns, use_rid)
+
     fig, ax = plt.subplots() # set size frame
     ax.xaxis.set_visible(False)  # hide the x axis
     ax.yaxis.set_visible(False)  # hide the y axis
@@ -81,8 +89,7 @@ def main(models, patterns, use_rid):
 
     voff = 1
     for m in models:
-        hsiz = 0.27*len(data.keys())
-        all_data[m].update(all_data_rid[m])
+        hsiz = 0.27*len(metrics)
         clv = 0.075
         voff -= 2*clv
         h1 = plt.table(
@@ -98,9 +105,9 @@ def main(models, patterns, use_rid):
         voff -= clv*(len(rowLabels)+1)
 
         tb = plt.table(
-            cellText=[[f"{x:.2g}" for x in list(all_data[m][x].values())] for x in rowLabels],
+            cellText=[[f"{x:.4g}" for x in list(all_data[m][x].values())] for x in rowLabels],
             rowLabels=rowLabels,
-            colLabels=list(data.keys()),
+            colLabels=metrics,
             bbox=[0, voff, hsiz, clv*(len(rowLabels)+1)]
         )
         tb.auto_set_font_size(False)
