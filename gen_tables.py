@@ -79,10 +79,12 @@ def get_data(models, patterns, use_rid):
 
     return all_data, list(data.keys())
 
-def main(models, patterns, use_rid):
-    all_data, metrics = get_data(models,patterns, use_rid)
+def graph_overall(data, metrics, out_file="overall"):
+    models = list(data.keys())
 
-    fig, ax = plt.subplots() # set size frame
+    fig = plt.figure(num=1,clear=True)
+    ax = fig.add_subplot()
+
     ax.xaxis.set_visible(False)  # hide the x axis
     ax.yaxis.set_visible(False)  # hide the y axis
     ax.set_frame_on(False)  # no visible frame, uncomment if size is ok
@@ -101,11 +103,11 @@ def main(models, patterns, use_rid):
         h1.set_fontsize(12)
         voff += clv
 
-        rowLabels = list(all_data[m].keys())
+        rowLabels = list(data[m].keys())
         voff -= clv*(len(rowLabels)+1)
 
         tb = plt.table(
-            cellText=[[f"{x:.4g}" for x in list(all_data[m][x].values())] for x in rowLabels],
+            cellText=[[f"{x:.4g}" for x in list(data[m][x].values())] for x in rowLabels],
             rowLabels=rowLabels,
             colLabels=metrics,
             bbox=[0, voff, hsiz, clv*(len(rowLabels)+1)]
@@ -113,17 +115,71 @@ def main(models, patterns, use_rid):
         tb.auto_set_font_size(False)
         tb.set_fontsize(12)
 
-    plt.savefig("ab.png", bbox_inches='tight', transparent=True)
+    plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
 
-    print(all_data)
+def graph_classes(data, metrics, class_config, out_file):
+    with open(class_config, "r") as fd:
+        cc = json.load(fd)
+    classes = cc['class_names']
+
+    models = list(data.keys())
+
+    fig = plt.figure(num=1,clear=True)
+    ax = fig.add_subplot()
+
+    ax.xaxis.set_visible(False)  # hide the x axis
+    ax.yaxis.set_visible(False)  # hide the y axis
+    ax.set_frame_on(False)  # no visible frame, uncomment if size is ok
+
+    voff = 1
+    for m in models:
+        hsiz = 0.27*len(metrics)
+        clv = 0.075
+        voff -= 2*clv
+        h1 = plt.table(
+            cellText=[[""]],
+            colLabels=[m],
+            bbox=[0, voff, hsiz, clv*2]
+        )
+        h1.auto_set_font_size(False)
+        h1.set_fontsize(12)
+        voff += clv
+
+        rowLabels = list(data[m].keys())
+        voff -= clv*(len(rowLabels)+1)
+
+        tb = plt.table(
+            cellText=[[f"{x:.4g}" for x in list(data[m][x].values())] for x in rowLabels],
+            rowLabels=rowLabels,
+            colLabels=metrics,
+            bbox=[0, voff, hsiz, clv*(len(rowLabels)+1)]
+        )
+        tb.auto_set_font_size(False)
+        tb.set_fontsize(12)
+
+    plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
+
+def main(models, patterns, use_rid, do_graph_overall, do_graph_classes, class_config):
+    all_data, metrics = get_data(models,patterns, use_rid)
+
+    if do_graph_overall:
+        graph_overall(all_data, metrics)
+
+    if do_graph_classes:
+        graph_classes(all_data, metrics, class_config)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-m", "--models", nargs='+', default=[], required=True)
-    parser.add_argument("-r", "--use_rid", action='store_true')
     parser.add_argument('-p', '--patterns', nargs='+', default=[])
+
+    parser.add_argument("-o", "--do_graph_overall", action='store_true')
+    parser.add_argument("-c", "--do_graph_classes", action='store_true')
+    parser.add_argument("-cc", "--class_config", type=str, default='configs/split_configs/config_classes_base.json')
+
+    parser.add_argument("-r", "--use_rid", action='store_true')
     
     args = vars(parser.parse_args())
 
