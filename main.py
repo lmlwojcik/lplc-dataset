@@ -21,16 +21,20 @@ from models.trainer import (
 
 def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
          do_predict, partition, load_model,   # For gathering predictions
-         dataset, run_name, n_features        # Per-run experiment variables
+         dataset, run_cluster, run_name, n_features        # Per-run experiment variables
     ):
     
+    cfg['save_path'] += "/" + dataset.replace("/", "_")
+    #if run_cluster is not None:
+    #    cfg['save_path'] += "/" + run_cluster
     if run_name is not None:
         print(f"Starting run: {run_name}")
         if cfg['model_name'] != 'yolo':
             cfg['save_path'] += "/" + run_name
         else:
             cfg["name"] = run_name
-            train_cfg['name'] = run_name
+            if train_cfg is not None:
+                train_cfg['name'] = run_name
     else:
         print("Starting run")
 
@@ -59,6 +63,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
         print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()
 
+    # Train
     if train_cfg is not None:
         if model_name == 'yolo':
             model, results = train_yolo(model, train_cfg, cfg['data'], cfg['save_path'])
@@ -73,21 +78,26 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
         model = None
         results = {}
 
+    # Test or Evaluate
     if test_cfg is not None:
         if model_name == 'yolo':
             test_results = test_yolo(model, test_cfg, cfg['data'], cfg, partition, load_model)
+            cfg['save_path'] += "/" + cfg['name']
         else:
-            test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model)
+            test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model, n_classes)
         results.update(test_results)
         print(json.dumps(results, indent=2))
         with open(Path(cfg['save_path']) / "all_results.json", "w") as fd:
             json.dump(results, fd, indent=2)
 
+    # Test and get predictions
     if do_predict:
         if model_name == 'yolo':
             predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model)
+            if test_cfg is None:
+                cfg['save_path'] += "/" + cfg['name']
         else:
-            predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model)
+            predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model, n_classes)
         print(predict_results['metrics'])
         with open(Path(cfg['save_path']) / f"predict_results_{partition}_with_logits.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
@@ -107,6 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test", type=str)
     parser.add_argument('-n', '--run_name', default=None, type=str)
+    parser.add_argument('-rc', '--run_cluster', default=None, type=str)
 
     parser.add_argument('-dt', '--dataset', default=None, type=str)
     parser.add_argument('-m', '--load_model', default=None, type=str)
@@ -153,7 +164,6 @@ if __name__ == '__main__':
         update_cfgs(train_cfg, test_cfg, clargs,
                         "batch_size" if cfg['model_name'] != "yolo" else "batch", 'batch_size')
 
-    print("C")
     args = {
         'cfg': cfg,
         'model_cfg': clargs['model_config'],
@@ -165,6 +175,7 @@ if __name__ == '__main__':
         'load_model': clargs['load_model'],
         'dataset': clargs['dataset'],
         'run_name': clargs['run_name'],
+        'run_cluster': clargs['run_cluster'],
         'n_features': clargs['n_features']
     }
 

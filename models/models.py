@@ -1,6 +1,6 @@
-from torchvision.models import vit_b_16
+from torchvision.models import vit_b_16, vit_b_32, vit_l_16
 from ultralytics import YOLO
-from torchvision.models import resnet50
+from torchvision.models import resnet50, resnet101, resnet152
 
 import torch
 from torch import nn
@@ -55,7 +55,12 @@ def create_baseline(model_cfg, n_features=128, n_classes=4):
     return cnn
 
 def create_vit(cfg, n_classes=4):
-    vit = vit_b_16(weights=cfg['vit_weights'])
+    if cfg['model_cfg'] == 'vit_b_16':
+        vit = vit_b_16(weights=cfg['vit_weights'])
+    elif cfg['model_cfg'] == 'vit_b_32':
+        vit = vit_b_32(weights=cfg['vit_weights'])
+    elif cfg['model_cfg'] == 'vit_l_16':
+        vit = vit_l_16(weights=cfg['vit_weights'])
 
     if cfg['freeze']:
         for c in vit.children():
@@ -68,7 +73,12 @@ def create_vit(cfg, n_classes=4):
     return vit
 
 def create_resnet(cfg, n_classes=4):
-    resnet = resnet50(weights=cfg['resnet_weights'])
+    if cfg['model_cfg'] == 'resnet50':
+        resnet = resnet50(weights=cfg['resnet_weights'])
+    elif cfg['model_cfg'] == 'resnet101':
+        resnet = resnet101(weights=cfg['resnet_weights'])
+    elif cfg['model_cfg'] == 'resnet152':
+        resnet = resnet152(weights=cfg['resnet_weights'])
 
     if cfg['freeze']:
         for c in resnet.children():
@@ -85,13 +95,13 @@ def create_yolo(cfg):
 
     return yolo
 
-def get_model_with_weights(cfg, load_model, device):
+def get_model_with_weights(cfg, load_model, device, n_classes=4):
     if cfg['model_name'] == 'small':
         model = create_baseline(cfg['model_cfg'], cfg['n_features'], cfg['n_classes'])
     elif cfg['model_name'] == 'resnet':
-        model = create_resnet(cfg)
+        model = create_resnet(cfg, n_classes=n_classes)
     else:
-        model = create_vit(cfg)
+        model = create_vit(cfg, n_classes=n_classes)
     
     if load_model is not None:
         ckpt = torch.load(load_model)
