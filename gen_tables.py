@@ -107,7 +107,7 @@ def get_data(models, patterns, use_rid, do_classes, class_config=None):
 
                         data_rid[tag]['overall_by_rid'].append(ri_f1_overall)
                         for i in range(len(cls)):
-                            data[tag][f"{cls[i]}_by_rid"].append(ri_f1_cls[i])
+                            data_rid[tag][f"{cls[i]}_by_rid"].append(ri_f1_cls[i])
 
                 else:
                     f1_overall = res['metrics'][f"{tag}_micro_f1"]
@@ -171,14 +171,8 @@ def graph_overall(data, metrics, out_file="overall"):
 
     plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
 
-def graph_classes(data, metrics, class_config, out_file):
-    ###
-    ### TO-DO
-    ###
-    with open(class_config, "r") as fd:
-        cc = json.load(fd)
-    classes = cc['class_names']
-
+def graph_classes(data, patterns, metrics, class_config, all_parts=False, out_file="classes"):
+    print(data)
     models = list(data.keys())
 
     fig = plt.figure(num=1,clear=True)
@@ -189,41 +183,57 @@ def graph_classes(data, metrics, class_config, out_file):
     ax.set_frame_on(False)  # no visible frame, uncomment if size is ok
 
     voff = 1
-    for m in models:
+    for cidx,p in enumerate(patterns):
+        with open(class_config[cidx], "r") as fd:
+            cc = json.load(fd)
+        cls = cc['class_names']
+
         hsiz = 0.27*len(metrics)
         clv = 0.075
         voff -= 2*clv
+
         h1 = plt.table(
             cellText=[[""]],
-            colLabels=[m],
+            colLabels=[p.split("_")[1]],
             bbox=[0, voff, hsiz, clv*2]
         )
         h1.auto_set_font_size(False)
         h1.set_fontsize(12)
         voff += clv
 
-        rowLabels = list(data[m].keys())
+        if all_parts:
+            ###
+            ### TO-DO
+            ###
+            rowLabels = []
+        else:
+            rowLabels = models
+        colLabels = cls[:]
+        colLabels.append("overall")
         voff -= clv*(len(rowLabels)+1)
 
+        print([[f"{data[m][p.split('_')[1]]['test'][k]:.4g}" for k in colLabels] for m in models])
+
         tb = plt.table(
-            cellText=[[f"{x:.4g}" for x in list(data[m][x].values())] for x in rowLabels],
+            cellText=[[f"{data[m][p.split('_')[1]]['test'][k]:.4g}" for k in colLabels] for m in models],
             rowLabels=rowLabels,
-            colLabels=metrics,
+            colLabels=colLabels,
             bbox=[0, voff, hsiz, clv*(len(rowLabels)+1)]
         )
         tb.auto_set_font_size(False)
         tb.set_fontsize(12)
 
+
     plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
 
 def main(models, patterns, use_rid, do_graph_overall, do_graph_classes, class_config, file_name):
-    all_data, metrics = get_data(models,patterns, use_rid, do_classes=do_graph_classes, class_config=class_config)
+    all_data, metrics = get_data(models, patterns, use_rid, do_classes=do_graph_classes, class_config=class_config)
 
     if do_graph_overall:
         graph_overall(all_data, metrics, out_file=file_name)
 
     if do_graph_classes:
-        graph_classes(all_data, metrics, class_config, out_file=file_name)
+        graph_classes(all_data, patterns, metrics, class_config, out_file=file_name)
 
 
 if __name__ == "__main__":
