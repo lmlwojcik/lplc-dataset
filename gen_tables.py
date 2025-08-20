@@ -1,13 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix, accuracy_score
 
 import argparse
 from glob import glob
 import json
 
-def c_to_d(score, thresh):
+def c_to_d(score, thresh=None, n_cls=4):
+    if thresh is None:
+        thresh = [np.mean([x/(n_cls-1),(x+1)/(n_cls-1)]) for x in range(n_cls-1)]
+    idx = 0
     for idx, v in enumerate(thresh):
         if score < v:
             return idx
@@ -31,55 +34,106 @@ def calc_metric_rid(metric, logits, n_cls=4):
     elif "acc" in metric:
         return f1_score(gt, pd, average="micro")
 
-def get_data(models, patterns, use_rid):
+def get_data(models, patterns, use_rid, do_classes, class_config=None):
     all_data = {}
     all_data_rid = {}
+
     for m in models:
         all_data[m] = {}
         all_data_rid[m] = {}
-        for p in patterns:
-            fs = glob(f"saved/{m}/{p}*/**/all_results.json")
+        for cidx,p in enumerate(patterns):
+            if class_config is not None and do_classes:
+                with open(class_config[cidx], "r") as fd:
+                    cc = json.load(fd)
+                cls = cc['class_names']
+            else:
+                cls = []
+
+            fs = glob(f"saved/{m}/{p}*/**/predict*.json")
             data = {
-                'train_acc': [],
-                'val_acc': [],
-                'test_acc': [],
-                'train_macro_f1': [],
-                'val_macro_f1': [],
-                'test_macro_f1': []
+                "train": {"overall": [], **{x:[] for x in cls}},
+                "val": {"overall": [], **{x:[] for x in cls}},
+                "test": {"overall": [], **{x:[] for x in cls}}
             }
-            data_rid = {}
+            data_rid = {
+                "train": {},
+                "val": {},
+                "test": {}
+            }
             if use_rid:
-                ks = list(data.keys())
+                ks = list(data['train'].keys())
                 for k in ks:
-                    data_rid[k + "_by_rid"] = []
+                    data_rid['train'][k + "_by_rid"] = []
+                    data_rid['val'][k + "_by_rid"] = []
+                    data_rid['test'][k + "_by_rid"] = []
 
             for f in fs:
                 with open(f, "r") as fd:
                     res = json.load(fd)
-                if use_rid:
-                    with open(f.replace("all_results", "predict_results_test_with_logits"), "r") as fd:
-                        with_logits = json.load(fd)
-                    n_cls = len(np.unique([x['gt'] for x in with_logits['file_predicts']]))
 
-                for k, v in data.items():
-                    v.append(res[k])
-                for k, v in data_rid.items():
-                    v.append(calc_metric_rid(k, with_logits['file_predicts'], n_cls=n_cls))
-            
-            pk = p.split("_")[1]
-            all_data[m][pk] = {}
-            all_data_rid[m][f"{pk}_rid"] = {}
-            for k, v in data.items():
-                all_data[m][pk][k] = np.mean(v)
-            for k, v in data_rid.items():
-                all_data_rid[m][f"{pk}_rid"][k] = np.mean(v)
+                if len(cls) != 0:
+                    n_cls = len(cls)
+                else:
+                    n_cls = len(np.unique([x['gt'] for x in res['file_predicts']]))
 
-    for m in models:
-        all_data[m].update(all_data_rid[m])
+                lf = f.split("/")[-1]
+                if "train" in lf:
+                    tag = "train"
+                elif "val" in lf:
+                    tag = "val"
+                elif "test" in lf:
+                    tag = "test"
 
-    return all_data, list(data.keys())
+                if class_config is not None and do_classes:
+                    gt = []
+                    pd = []
+
+                    for f in res['file_predicts']:
+                        gt.append(f['gt'])
+                        pd.append(f['pd'])
+                    f1_overall = f1_score(gt, pd, average='micro')
+                    f1_cls = f1_score(gt, pd, average=None)
+
+                    data[tag]['overall'].append(f1_overall)
+                    for i in range(len(cls)):
+                        data[tag][cls[i]].append(f1_cls[i])
+
+                    if use_rid:
+                        ripd = []
+                        for f in res['file_predicts']:
+                            ripd.append(c_to_d(get_rid(f['logits'][0], n_cls=n_cls), n_cls=n_cls))
+                        ri_f1_overall = f1_score(gt, ripd, average='micro')
+                        ri_f1_cls = f1_score(gt, ripd, average=None)
+
+                        data_rid[tag]['overall_by_rid'].append(ri_f1_overall)
+                        for i in range(len(cls)):
+                            data[tag][f"{cls[i]}_by_rid"].append(ri_f1_cls[i])
+
+                else:
+                    f1_overall = res['metrics'][f"{tag}_micro_f1"]
+                    data[tag]['overall'].append(f1_overall)
+
+                    if use_rid:
+                        ri_f1_overall = calc_metric_rid("acc", res['file_predicts'], n_cls=n_cls)
+                        data_rid[tag]['overall_by_rid'].append(ri_f1_overall)
+                            
+            pk = p.split("_")[1] # to be changed later
+            all_data[m][pk] = {"train": {}, "val": {}, "test": {}}
+            all_data_rid[m][f"{pk}_rid"] = {"train": {}, "val": {}, "test": {}}
+            for part in ['train', 'val', 'test']:
+                for k, v in data[part].items():
+                    all_data[m][pk][part][k] = np.mean(v)
+                for k, v in data_rid[part].items():
+                    all_data_rid[m][f"{pk}_rid"][part][k] = np.mean(v)
+
+    if use_rid:
+        for m in models:
+            all_data[m].update(all_data_rid[m])
+
+    return all_data, [f"{part}_f1" for part in list(data.keys())]
 
 def graph_overall(data, metrics, out_file="overall"):
+
     models = list(data.keys())
 
     fig = plt.figure(num=1,clear=True)
@@ -107,7 +161,7 @@ def graph_overall(data, metrics, out_file="overall"):
         voff -= clv*(len(rowLabels)+1)
 
         tb = plt.table(
-            cellText=[[f"{x:.4g}" for x in list(data[m][x].values())] for x in rowLabels],
+            cellText=[[f"{list(x.values())[0]:.4g}" for x in list(data[m][y].values())] for y in rowLabels],
             rowLabels=rowLabels,
             colLabels=metrics,
             bbox=[0, voff, hsiz, clv*(len(rowLabels)+1)]
@@ -118,6 +172,9 @@ def graph_overall(data, metrics, out_file="overall"):
     plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
 
 def graph_classes(data, metrics, class_config, out_file):
+    ###
+    ### TO-DO
+    ###
     with open(class_config, "r") as fd:
         cc = json.load(fd)
     classes = cc['class_names']
@@ -159,14 +216,14 @@ def graph_classes(data, metrics, class_config, out_file):
 
     plt.savefig(f"saved/figs/{out_file}.png", bbox_inches='tight', transparent=True)
 
-def main(models, patterns, use_rid, do_graph_overall, do_graph_classes, class_config):
-    all_data, metrics = get_data(models,patterns, use_rid)
+def main(models, patterns, use_rid, do_graph_overall, do_graph_classes, class_config, file_name):
+    all_data, metrics = get_data(models,patterns, use_rid, do_classes=do_graph_classes, class_config=class_config)
 
     if do_graph_overall:
-        graph_overall(all_data, metrics)
+        graph_overall(all_data, metrics, out_file=file_name)
 
     if do_graph_classes:
-        graph_classes(all_data, metrics, class_config)
+        graph_classes(all_data, metrics, class_config, out_file=file_name)
 
 
 if __name__ == "__main__":
@@ -177,9 +234,10 @@ if __name__ == "__main__":
 
     parser.add_argument("-o", "--do_graph_overall", action='store_true')
     parser.add_argument("-c", "--do_graph_classes", action='store_true')
-    parser.add_argument("-cc", "--class_config", type=str, default='configs/split_configs/config_classes_base.json')
+    parser.add_argument("-cc", "--class_config", nargs='+', default=['configs/split_configs/config_classes_base.json'])
 
     parser.add_argument("-r", "--use_rid", action='store_true')
+    parser.add_argument("-f", "--file_name", default='graph')
     
     args = vars(parser.parse_args())
 
