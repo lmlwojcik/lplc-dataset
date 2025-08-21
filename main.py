@@ -105,11 +105,13 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     # Test and get predictions
     if do_predict:
         if model_name == 'yolo':
-            predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model)
+            save = cfg['save_path'] / Path(cfg['name']) if save_images else None
+            predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model, save)
             if test_cfg is None:
                 cfg['save_path'] = cfg['save_path'] / Path(cfg['name'])
         else:
-            predict_results = predict_torch_model(model, dts, cfg['data'], cfg, partition, load_model)
+            save = cfg['save_path'] if save_images else None
+            predict_results = predict_torch_model(model, dts, cfg['data'], cfg, partition, load_model, save)
         print(predict_results['metrics'])
         with open(Path(cfg['save_path']) / f"predict_results_{partition}_with_logits.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)

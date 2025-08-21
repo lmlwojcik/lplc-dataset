@@ -167,15 +167,25 @@ def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=No
                            device=cfg['use_gpu'])
     return metrics
 
-def predict_torch_model(model, dts, dataset, g_cfg, partition='test', load_model=None):
+def predict_torch_model(model, dts, dataset, g_cfg, partition='test', load_model=None, save_images=None):
+    cls = dataset['class_names']
+    n_classes = len(cls)
+
+    if save_images is not None:
+        save_images = save_images / Path(f"images_{partition}/")
+        if save_images.exists():
+            shutil.rmtree(save_images)
+        save_images.mkdir(parents=True,exist_ok=True)
+        for c in cls:
+            nd = save_images / Path(c)
+            nd.mkdir(parents=True,exist_ok=True)
+
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=g_cfg['use_gpu'])
     test_data = DataLoader(
         dts,
         batch_size=1,
         shuffle=False
     )
-    cls = dataset['class_names']
-    n_classes = len(cls)
 
     # We jump here without training, model must be loaded from memory
     if model is None:
@@ -186,7 +196,7 @@ def predict_torch_model(model, dts, dataset, g_cfg, partition='test', load_model
     pds = []
     model.eval()
     with torch.no_grad():
-        for f, (im,lb) in zip(dts.files, test_data):
+        for f, (im,lb) in zip(dts.fs, test_data):
             logits = model(im)
 
             lb = lb.squeeze(1)
@@ -196,6 +206,8 @@ def predict_torch_model(model, dts, dataset, g_cfg, partition='test', load_model
             pds.append(pd)
 
             file_predicts.append({"fname": f, "gt": lb.item(), "pd": pd.item(), "logits": logits.tolist()})
+            if save_images is not None and lb != pd:
+                shutil.copy(f, f"{save_images}/{cls[lb]}/{cls[pd]}_{f.split('/')[-1]}")
 
     metrics = gen_metrics(torch.tensor(gts),torch.tensor(pds),
                         pt=partition,
@@ -218,8 +230,17 @@ def train_yolo(yolo, cfg, dataset, save_dir=None):
     yolo.train(data=dataset['dir'], **cfg)
     return yolo, None
 
-def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, return_preds=False):
+def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, return_preds=False, save_images=None):
     cls = dataset['class_names']
+
+    if save_images is not None:
+        save_images = save_images / Path(f"images_{partition}/")
+        if save_images.exists():
+            shutil.rmtree(save_images)
+        save_images.mkdir(parents=True,exist_ok=True)
+        for c in cls:
+            nd = save_images / Path(c)
+            nd.mkdir(parents=True,exist_ok=True)
 
     if model is None:
         if load_model is not None:
@@ -243,6 +264,9 @@ def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, ret
             gts.append(gt)
 
             file_predicts.append({"fname": f.split("/")[-1], "gt": gt, "pd": pd})
+            if save_images is not None and gt != pd:
+                shutil.copy(f, f"{save_images}/{cls[gt]}/{cls[pd]}_{f.split('/')[-1]}")
+
         metrics = gen_metrics(torch.tensor(gts,dtype=torch.int64),
                               torch.tensor(pds,dtype=torch.int64),
                               cls,pt=partition,return_matrix=True)
@@ -260,6 +284,6 @@ def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, ret
                        torch.tensor(pds,dtype=torch.int64),
                        cls,pt=partition,return_matrix=True)
 
-def predict_yolo(model, dataset, g_cfg, partition='test', load_model=None):
-    return test_yolo(model, {'batch': 1}, dataset, g_cfg, partition, load_model, return_preds=True)
+def predict_yolo(model, dataset, g_cfg, partition='test', load_model=None, save_images=None):
+    return test_yolo(model, {'batch': 1}, dataset, g_cfg, partition, load_model, return_preds=True, save_images=save_images)
 

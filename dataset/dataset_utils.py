@@ -56,6 +56,7 @@ class LPSD_Dataset(Dataset):
         self.ims = []
         self.lbt = []
         self.gts = []
+        self.fs = []
         self.nfs = 0
         for f in self.files:
             lb = int(f.split("/")[-2])
@@ -64,6 +65,7 @@ class LPSD_Dataset(Dataset):
                 continue
             self.nfs += 1
             im = resize_with_pad(cv2.imread(f), imgsz)
+            self.fs.append(f)
             self.ims.append(self.transform(im).to(self.device))
             self.lbt.append(torch.tensor([lb]).to(self.device))
         self.cls_weights = calc_class_weights(self.gts)
