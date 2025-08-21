@@ -1,0 +1,10 @@
+{
+    "model_name": "yolo",
+    "yolo_path": "weights/yolo11x-cls.pt",
+    "freeze": false,
+    "save_path": "saved/yolo_x/",
+    "name": "yolo",
+    "data": {
+        "dir": "sldir/scen0/0_1/"
+    }
+}
