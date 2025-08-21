@@ -81,7 +81,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         avg_loss = e_loss/len(train_data)
         pds = pds.to(torch.int64)
         gts = gts.to(torch.int64)
-        train_metrics = gen_metrics(gts, pds, pt="train", loss=avg_loss)
+        train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
 
         return avg_loss, train_metrics
 
@@ -103,7 +103,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
         if cfg['validate']: 
             vm = calc_metrics(model, valid_data, "val",
-                              get_loss=True, loss=loss, device=cfg['use_gpu'])
+                              loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
         scheduler.step(log_metrics['val_loss'])
 
@@ -129,9 +129,9 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
     if epoch == 0:
         log_metrics = calc_metrics(model, train_data, "train",
-                                   get_loss=True, loss=loss, device=cfg['use_gpu'])
+                                   loss=loss, device=cfg['use_gpu'])
         vm = calc_metrics(model, valid_data, "val",
-                          get_loss=True, loss=loss, device=cfg['use_gpu'])
+                          loss=loss, device=cfg['use_gpu'])
         log_metrics.update(vm)
     if log_cfg is not None:
         log_metrics_json(log_metrics, log_file)
@@ -139,8 +139,10 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
     return model, log_metrics
 
-def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=None, n_classes=4):
+def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu'])
+    cls = dataset['class_names']
+    n_classes = len(cls)
 
     test_data = DataLoader(
         dts,
@@ -155,17 +157,19 @@ def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=No
     print("Running test")
     metrics = calc_metrics(model, test_data, pt=partition,
                            return_matrix=True, verbose=True,
-                           n_classes=g_cfg['n_classes'],
+                           class_names=cls,
                            device=cfg['use_gpu'])
     return metrics
 
-def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None, n_classes=4):
+def predict_torch_model(model, dts, dataset, g_cfg, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=g_cfg['use_gpu'])
     test_data = DataLoader(
         dts,
         batch_size=1,
         shuffle=False
     )
+    cls = dataset['class_names']
+    n_classes = len(cls)
 
     # We jump here without training, model must be loaded from memory
     if model is None:
@@ -190,7 +194,7 @@ def predict_torch_model(model, dataset, g_cfg, partition='test', load_model=None
     metrics = gen_metrics(torch.tensor(gts),torch.tensor(pds),
                         pt=partition,
                         return_matrix=True,
-                        n_classes=g_cfg['n_classes']
+                        cls=cls
                     )
     ret = {'metrics': metrics, 'file_predicts': file_predicts}
     return ret

@@ -2,6 +2,7 @@ import argparse
 from glob import glob
 import json
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from models.models import (
     create_yolo,
@@ -21,10 +22,16 @@ from models.trainer import (
 
 def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
          do_predict, partition, load_model,   # For gathering predictions
-         dataset, run_cluster, run_name, n_features        # Per-run experiment variables
+         dts_config, fold, run_name, n_features        # Per-run experiment variables
     ):
-    
-    cfg['save_path'] += "/" + dataset.replace("/", "_")
+    with open(f"{dts_config}", "r") as fd:
+        dts = json.load(fd)
+        scen = Path(dts['scen_name'])
+        dataset = Path("sldir") / Path(dts['sub_dir']) / Path(fold)
+        cls = dts['class_names']
+
+    cfg['save_path'] =  cfg['save_path'] / scen
+    cfg['data']['class_names'] = cls
     #if run_cluster is not None:
     #    cfg['save_path'] += "/" + run_cluster
     if run_name is not None:
@@ -42,7 +49,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     if dataset is not None:
         cfg['data'][tag] = dataset
     print(f"Dataset partition: {cfg['data'][tag]}")
-    n_classes = len(glob(f"{dataset}/train/*"))
+    n_classes = len(cls)
     cfg['n_classes'] = n_classes
     print(f"This protocol has {n_classes} classes.")
 
@@ -84,11 +91,16 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
             test_results = test_yolo(model, test_cfg, cfg['data'], cfg, partition, load_model)
             cfg['save_path'] += "/" + cfg['name']
         else:
-            test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model, n_classes)
+            test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model)
         results.update(test_results)
         print(json.dumps(results, indent=2))
         with open(Path(cfg['save_path']) / "all_results.json", "w") as fd:
             json.dump(results, fd, indent=2)
+        
+        plt.title(f"{scen} - {partition} C-Matrix")
+        plt.tight_layout()
+        plt.savefig(Path(cfg['save_path']) / f"test_{partition}_confusion_matrix.png")
+        plt.clf()
 
     # Test and get predictions
     if do_predict:
@@ -97,10 +109,14 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
             if test_cfg is None:
                 cfg['save_path'] += "/" + cfg['name']
         else:
-            predict_results = predict_torch_model(model, cfg['data'], cfg, partition, load_model, n_classes)
+            predict_results = predict_torch_model(model, dts, cfg['data'], cfg, partition, load_model)
         print(predict_results['metrics'])
         with open(Path(cfg['save_path']) / f"predict_results_{partition}_with_logits.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
+        
+        plt.title(f"{scen} - {partition} C-Matrix")
+        plt.tight_layout()
+        plt.savefig(Path(cfg['save_path']) / f"predict_{partition}_confusion_matrix.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -117,9 +133,9 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test", type=str)
     parser.add_argument('-n', '--run_name', default=None, type=str)
-    parser.add_argument('-rc', '--run_cluster', default=None, type=str)
 
-    parser.add_argument('-dt', '--dataset', default=None, type=str)
+    parser.add_argument('-dt', '--dataset_config', default='configs/split_configs/config_classes_base.json', type=str)
+    parser.add_argument('-f', '--fold', default='0_1', type=str)
     parser.add_argument('-m', '--load_model', default=None, type=str)
     parser.add_argument('-nf', '--n_features', default=None, type=int)
 
@@ -173,13 +189,10 @@ if __name__ == '__main__':
         'do_predict': clargs['do_predict'],
         'partition': clargs['partition'],
         'load_model': clargs['load_model'],
-        'dataset': clargs['dataset'],
+        'dts_config': clargs['dataset_config'],
+        'fold': clargs['fold'],
         'run_name': clargs['run_name'],
-        'run_cluster': clargs['run_cluster'],
         'n_features': clargs['n_features']
     }
-
-    if args['dataset'] is None:
-        args['dataset'] = cfg['data']['path']
 
     main(**args)
