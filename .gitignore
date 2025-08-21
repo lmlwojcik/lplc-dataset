@@ -2,6 +2,8 @@
 sldir/
 
 *.zip
+*.png
+
 LPRD_Dataset
 saved/
 logs/*
