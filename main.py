@@ -21,23 +21,23 @@ from models.trainer import (
 )
 
 def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
-         do_predict, partition, load_model,   # For gathering predictions
+         do_predict, partition, load_model, save_images,   # For gathering predictions
          dts_config, fold, run_name, n_features        # Per-run experiment variables
     ):
     with open(f"{dts_config}", "r") as fd:
         dts = json.load(fd)
-        scen = Path(dts['scen_name'])
+        scen = Path(dts['scen'])
         dataset = Path("sldir") / Path(dts['sub_dir']) / Path(fold)
         cls = dts['class_names']
 
-    cfg['save_path'] = cfg['save_path'] / scen / Path(run_name)
+    cfg['save_path'] = cfg['save_path'] / scen
     cfg['data']['class_names'] = cls
     #if run_cluster is not None:
     #    cfg['save_path'] += "/" + run_cluster
     if run_name is not None:
         print(f"Starting run: {run_name}")
         if cfg['model_name'] != 'yolo':
-            cfg['save_path'] += "/" + run_name
+            cfg['save_path'] = cfg['save_path'] / Path(run_name)
         else:
             cfg["name"] = run_name
             if train_cfg is not None:
@@ -123,6 +123,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--config', default="configs/config_yolo.json", type=str)
     parser.add_argument('-mc', '--model_config', default=None, type=str)
+    parser.add_argument('-n', '--run_name', default=None, type=str)
 
     parser.add_argument('-d', '--device', default='cpu', type=str)
     parser.add_argument('-bs', '--batch_size', default=None, type=int)
@@ -132,7 +133,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test", type=str)
-    parser.add_argument('-n', '--run_name', default=None, type=str)
+    parser.add_argument('-s', '--save_images', default=False, action='store_true')
 
     parser.add_argument('-dt', '--dataset_config', default='configs/split_configs/config_classes_base.json', type=str)
     parser.add_argument('-f', '--fold', default='0_1', type=str)
@@ -191,6 +192,7 @@ if __name__ == '__main__':
         'load_model': clargs['load_model'],
         'dts_config': clargs['dataset_config'],
         'fold': clargs['fold'],
+        'save_images': clargs['save_images'],
         'run_name': clargs['run_name'],
         'n_features': clargs['n_features']
     }

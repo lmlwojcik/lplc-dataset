@@ -1,5 +1,6 @@
 {
     "use_gpu": 0,
+    "loss": "focal",
     "optim": "adam",
     "optim_config": {
         "lr": 1e-5

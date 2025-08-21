@@ -19,8 +19,10 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path = Path(save_path)
     save_path.mkdir(parents=True,exist_ok=True)
 
+    dts = LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu'])
+    cls_ws = dts.cls_weights.to(cfg['use_gpu'])
     train_data = DataLoader(
-        LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
+        dts,
         batch_size=cfg['batch_size'],
         shuffle=cfg['shuffle']
     )
@@ -49,8 +51,12 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     elif cfg['optim'] == "sgd":
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
     scheduler = ReduceLROnPlateau(opt, 'min')
-    loss = nn.CrossEntropyLoss()
-    
+
+    if cfg['loss'] == 'ce':
+        loss = nn.CrossEntropyLoss()
+    elif cfg['loss'] == 'focal':
+        loss = nn.CrossEntropyLoss(weight=cls_ws)
+
     def train_epoch(epoch=0, c_step=0, device='cuda:0'):
         e_loss = 0
         pds = torch.tensor([]).to(device)
