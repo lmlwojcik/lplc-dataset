@@ -12,6 +12,7 @@ requests==2.32.4
 scikit-image==0.24.0
 scikit-learn==1.6.1
 scipy==1.13.1
+seaborn==0.13.2
 tensorboard==2.19.0
 tensorboard-data-server==0.7.2
 tensorboardX==2.6.4
