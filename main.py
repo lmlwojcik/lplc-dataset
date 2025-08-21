@@ -30,7 +30,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
         dataset = Path("sldir") / Path(dts['sub_dir']) / Path(fold)
         cls = dts['class_names']
 
-    cfg['save_path'] =  cfg['save_path'] / scen
+    cfg['save_path'] = cfg['save_path'] / scen / Path(run_name)
     cfg['data']['class_names'] = cls
     #if run_cluster is not None:
     #    cfg['save_path'] += "/" + run_cluster
@@ -89,7 +89,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     if test_cfg is not None:
         if model_name == 'yolo':
             test_results = test_yolo(model, test_cfg, cfg['data'], cfg, partition, load_model)
-            cfg['save_path'] += "/" + cfg['name']
+            cfg['save_path'] = cfg['save_path'] / Path(cfg['name'])
         else:
             test_results = test_torch_model(model, test_cfg, cfg['data'], cfg, partition, load_model)
         results.update(test_results)
@@ -107,7 +107,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
         if model_name == 'yolo':
             predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model)
             if test_cfg is None:
-                cfg['save_path'] += "/" + cfg['name']
+                cfg['save_path'] = cfg['save_path'] / Path(cfg['name'])
         else:
             predict_results = predict_torch_model(model, dts, cfg['data'], cfg, partition, load_model)
         print(predict_results['metrics'])

@@ -213,6 +213,8 @@ def train_yolo(yolo, cfg, dataset, save_dir=None):
     return yolo, None
 
 def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, return_preds=False):
+    cls = dataset['class_names']
+
     if model is None:
         if load_model is not None:
             model = YOLO(load_model)
@@ -237,7 +239,7 @@ def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, ret
             file_predicts.append({"fname": f.split("/")[-1], "gt": gt, "pd": pd})
         metrics = gen_metrics(torch.tensor(gts,dtype=torch.int64),
                               torch.tensor(pds,dtype=torch.int64),
-                              pt=partition,return_matrix=True)
+                              cls,pt=partition,return_matrix=True)
         ret = {"metrics": metrics, "file_predicts": file_predicts}
         return ret
 
@@ -249,8 +251,8 @@ def test_yolo(model, cfg, dataset, g_cfg, partition='test', load_model=None, ret
         pds.append(pd)
 
     return gen_metrics(torch.tensor(gts,dtype=torch.int64),
-                       torch.tensor(pds,dtype=torch.int64)
-                       ,pt=partition,return_matrix=True)
+                       torch.tensor(pds,dtype=torch.int64),
+                       cls,pt=partition,return_matrix=True)
 
 def predict_yolo(model, dataset, g_cfg, partition='test', load_model=None):
     return test_yolo(model, {'batch': 1}, dataset, g_cfg, partition, load_model, return_preds=True)
