@@ -6,6 +6,10 @@ sldir/
 
 LPRD_Dataset
 saved/
+
+scripts/*
+!scripts/run_experiments.sh
+
 logs/*
 !logs/results_example.json
 !logs/training_example.json
