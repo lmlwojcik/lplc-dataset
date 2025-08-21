@@ -1,5 +1,5 @@
 {
-    "class_name": "readable",
+    "class_names": ["Illegible", "Poor", "Good", "Perfect"],
     "all_classes": ["0", "1", "2", "3"],
     "exclude_classes": [],
     "class_dct": {
@@ -8,5 +8,6 @@
         "2": ["2"],
         "3": ["3"]
     },
+    "scen_name": "scen0",
     "sub_dir": "scen0"
 }

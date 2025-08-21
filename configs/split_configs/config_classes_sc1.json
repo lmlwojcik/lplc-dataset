@@ -1,10 +1,11 @@
 {
-    "class_name": "readable",
+    "class_names": ["Poor", "Legible"],
     "all_classes": ["0", "1"],
     "exclude_classes": ["3"],
     "class_dct": {
         "0": [1],
         "1": [2, 3]
     },
+    "scen": "scen1",
     "sub_dir": "scen1"
 }
