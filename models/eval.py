@@ -49,7 +49,6 @@ def eval_model(model, data, loss=None, verbose=False, device=None):
 
 def gen_metrics(gts, pds, cls, pt="train", return_matrix=False, loss=None):
     n_classes = len(cls)
-    print(n_classes)
 
     micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
     macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=n_classes).item()

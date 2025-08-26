@@ -44,7 +44,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         if len(cfg['use_gpu']) == 1:
             cfg['use_gpu'] = f"cuda:{cfg['use_gpu']}"
         model.to(torch.device(f"{cfg['use_gpu']}"))
-    print("Running experiments at ", cfg['use_gpu'])
+    print("Running experiments at", cfg['use_gpu'])
 
     if cfg['optim'] == "adam":
         opt = Adam(model.named_parameters(), **cfg['optim_config'])
@@ -108,7 +108,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
-            vm = calc_metrics(model, valid_data, "val",
+            vm = calc_metrics(model, valid_data, "val", class_names=dataset['class_names'],
                               loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
         scheduler.step(log_metrics['val_loss'])
