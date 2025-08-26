@@ -20,7 +20,6 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path.mkdir(parents=True,exist_ok=True)
 
     dts = LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu'])
-    cls_ws = dts.cls_weights.to(cfg['use_gpu'])
     train_data = DataLoader(
         dts,
         batch_size=cfg['batch_size'],
@@ -54,7 +53,8 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
     if cfg['loss'] == 'ce':
         loss = nn.CrossEntropyLoss()
-    elif cfg['loss'] == 'focal':
+    elif cfg['loss'] == 'ce_weighted':
+        cls_ws = dts.cls_weights.to(cfg['use_gpu'])
         loss = nn.CrossEntropyLoss(weight=cls_ws)
 
     def train_epoch(epoch=0, c_step=0, device='cuda:0'):
