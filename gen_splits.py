@@ -89,7 +89,7 @@ def class_mapping(c_cfg, n_classes):
     return cls
 
 def load_fnames(cfg, cls):
-    plates = {int(i): [] for i in cls.keys()}
+    plates = {int(i): [] for i in set(cls.values())}
     for i in range(cfg['n_classes']):
         if i not in cls.keys():
             continue
@@ -106,7 +106,7 @@ def gen_splits(cfg, c_cfg):
         classes = [x for x in range(len(cfg['n_classes']))]
     cls = class_mapping(c_cfg, cfg['n_classes'])
     plates = load_fnames(cfg, cls)
-    for i in cls.keys():
+    for i in set(cls.values()):
         plates[i] = split_files(plates[i], nf)
     if c_cfg is not None:
         cfg['output_dir'] += "/" + c_cfg['sub_dir']
