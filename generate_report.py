@@ -1,21 +1,33 @@
 import numpy as np
 from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
-from matplotlib.transforms import Bbox
 from itertools import product
 
 from glob import glob
 import argparse
 import json
 
-def metrics_from_matrix(mat, cls):
+def metrics_from_matrix(mat, cls, cls_dct):
     metrics = {}
     gt = []
     pd = []
-    for i in range(len(cls)):
-        gt += [i]*sum(mat[i])
-        for j in range(len(cls)):
-            pd += [j]*mat[i][j]
+    if cls_dct is not None:
+        dct = {v:int(k) for k,vv in cls_dct.items() for v in vv}
+        for i in range(len(mat[0])):
+            if i not in dct.keys():
+                continue
+
+            gt += [dct[i]]*sum(mat[i])
+            for j in range(len(mat[0])):
+                if j not in dct.keys():
+                    pd += [-1]*mat[i][j]
+                else:
+                    pd += [dct[j]]*mat[i][j]
+    else:
+        for i in range(len(cls)):
+            gt += [i]*sum(mat[i])
+            for j in range(len(cls)):
+                pd += [j]*mat[i][j]
     report = classification_report(gt, pd, output_dict=True)
 
     metrics['overall'] = report['weighted avg']['f1-score']
@@ -24,7 +36,7 @@ def metrics_from_matrix(mat, cls):
 
     return metrics
 
-def get_overalls(m, e, cls):
+def get_overalls(m, e, cls, cls_dct):
     overalls = {}
     for o in ['train', 'val', 'test']:
         overalls[o] = []
@@ -35,7 +47,7 @@ def get_overalls(m, e, cls):
         rep = {}
         with open(f"{p}/all_results.json", "r") as fd:
             js = json.load(fd)
-            rep = metrics_from_matrix(js['test_matrix'], cls)
+            rep = metrics_from_matrix(js['test_matrix'], cls, cls_dct)
             rep['train'] = js['train_micro_f1']
             rep['val'] = js['val_micro_f1']
             rep['test'] = rep.pop('overall')
@@ -57,15 +69,14 @@ def gen_table(results, output):
             for k,p in enumerate(metrics):
                 data[i,j,k] = results[m][e][p]
     first_rows = list(product(ms, ex))
-    print(len(first_rows))
 
     # Arguments for table
     voff = 1
-    hsiz = 0.27*len(metrics)        # total table width
-    #hsiz = 0.27*(len(metrics)+2)
+    #hsiz = 2
+    #hsiz = 0.27*len(metrics)        # total table width
+    hsiz = 0.27*(len(metrics)+2)
     clv = 0.085                  # cell height
     #voff -= (len(first_rows)+1)*clv # controls vertical delta
-    print(data)
     plt.axis('off')
     plt.grid('off')
 
@@ -83,15 +94,17 @@ def gen_table(results, output):
 
     h1.figure.savefig(f"saved/figs/{output}.png", transparent=False, bbox_inches='tight')
 
-def main(models, experiments, class_config, output):
+def main(models, experiments, class_config, transform, output):
     with open(f"configs/split_configs/{class_config}", "r") as fd:
-        cls = json.load(fd)['class_names']
+        cls_cfg = json.load(fd)
+        cls = cls_cfg['class_names']
+        cls_dct = cls_cfg['class_dct'] if transform else None
 
     rs = {}
     for m in models:
         rs[m] = {}
         for i,e in enumerate(experiments):
-            results = get_overalls(m, e, cls)
+            results = get_overalls(m, e, cls, cls_dct)
             rs[m][e] = results
 
     gen_table(rs, output)
@@ -103,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--experiments', nargs='+', default=[])
 
     parser.add_argument("-c", "--class_config", default=['base.json'])
+    parser.add_argument('-t', '--transform', action='store_true')
 
     parser.add_argument("-o", "--output", default='report')
     
