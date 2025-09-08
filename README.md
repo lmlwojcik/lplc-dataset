@@ -108,7 +108,17 @@ The LPLC dataset is available under request. If you are interested, please conta
 All samples in the dataset can only be used by the applicant and only used for academic research. It may not be used for commercial usage, and use in publications must be properly acknowledged. The BibTeX citation is available below.
 
 ```
-Hello world
+@article{wojcik2025lplc,
+  title = {{LPLC}: A Dataset for License Plate Legibility Classification},
+  author = {L. {Wojcik} and G. E. {Lima} and V. {Nascimento} and E. {Nascimento Jr.} and R. {Laroca} and D. {Menotti}},
+  year = {2025},
+  journal = {Conference on Graphics, Patterns and Images (SIBGRAPI)},
+  volume = {},
+  number = {},
+  pages = {1-6},
+  doi = {},
+  issn = {1530-1834},
+}
 ```
 
 ## Experiments reproduction
