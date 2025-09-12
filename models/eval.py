@@ -50,11 +50,12 @@ def eval_model(model, data, loss=None, verbose=False, device=None):
 def gen_metrics(gts, pds, cls, pt="train", return_matrix=False, loss=None):
     n_classes = len(cls)
 
-    micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
+    #micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
     macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=n_classes).item()
     acc = multiclass_accuracy(pds,gts).item()
 
-    metrics = {f"{pt}_acc": acc, f"{pt}_micro_f1": micro_f1, f"{pt}_macro_f1": macro_f1}
+    metrics = {f"{pt}_acc": acc, f"{pt}_macro_f1": macro_f1}
+    #metrics = {f"{pt}_acc": acc, f"{pt}_micro_f1": micro_f1, f"{pt}_macro_f1": macro_f1}
     if loss is not None:
         metrics[f"{pt}_loss"] = loss
 
