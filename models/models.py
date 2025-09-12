@@ -89,10 +89,28 @@ def create_resnet(cfg, n_classes=4):
 
     return resnet
 
-def create_yolo(cfg):
+def create_yolo(cfg, n_classes=4, torch_training=False):
     yolo_name = cfg['yolo_path']
     yolo = YOLO(yolo_name)
+    if not torch_training:
+        return yolo
+    else:
+        bb = yolo
+        backbone = nn.Sequential(*list(bb.model.model.children())[:-1])  # shared feature extractor without the Classify block
+        
+        out_channels = list(bb.model.model.children())[-1].conv.conv.out_channels
+        in_channels = list(bb.model.model.children())[-1].conv.conv.in_channels
 
+        head = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+                nn.BatchNorm2d(out_channels),
+                nn.SiLU(inplace=True),
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten(),
+                nn.Linear(out_channels, n_classes)
+            )
+        yolo = nn.Sequential(backbone, head)
+    
     return yolo
 
 def get_model_with_weights(cfg, load_model, device, n_classes=4):

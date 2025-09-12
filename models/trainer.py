@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from tqdm import tqdm
 
 from pathlib import Path
+import datetime
 import shutil
 from glob import glob
 
@@ -14,6 +15,7 @@ from dataset.dataset_utils import LPSD_Dataset
 from models.eval import calc_metrics, gen_metrics
 from models.utils import start_log, end_log, log_metrics_json, dict_to_table
 from models.models import get_model_with_weights
+from models.loss import focal_loss
 
 def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path = Path(save_path)
@@ -49,13 +51,16 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         opt = Adam(model.named_parameters(), **cfg['optim_config'])
     elif cfg['optim'] == "sgd":
         opt = SGD(model.named_parameters(), **cfg['optim_config'])
-    scheduler = ReduceLROnPlateau(opt, 'min')
+    scheduler = ReduceLROnPlateau(opt, 'min', **cfg['scheduler_config'])
 
     if cfg['loss'] == 'ce':
         loss = nn.CrossEntropyLoss()
     elif cfg['loss'] == 'ce_weighted':
         cls_ws = dts.cls_weights.to(cfg['use_gpu'])
         loss = nn.CrossEntropyLoss(weight=cls_ws)
+    elif cfg['loss'] == 'focal':
+        cls_ws = dts.cls_weights.to(cfg['use_gpu'])
+        loss = focal_loss(alpha=cls_ws, gamma=2.0, device=cfg['use_gpu'])    
 
     def train_epoch(epoch=0, c_step=0, device='cuda:0'):
         e_loss = 0
@@ -98,6 +103,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     cnt = 0
     epoch = 0
 
+    start = datetime.datetime.now()
     for epoch in range(1, cfg['epochs']+1):
         print(f"Starting epoch {epoch}")
 
@@ -111,7 +117,9 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
             vm = calc_metrics(model, valid_data, "val", class_names=dataset['class_names'],
                               loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
-        scheduler.step(log_metrics['val_loss'])
+            scheduler.step(log_metrics['val_loss'])
+            log_metrics['lr'] = scheduler.get_last_lr()[-1]
+        log_metrics['minutes'] = (datetime.datetime.now() - start).total_seconds()/60
 
         print(dict_to_table(log_metrics))
         #print(json.dumps(log_metrics))
