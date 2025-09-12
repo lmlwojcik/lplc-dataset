@@ -20,10 +20,11 @@ from models.trainer import (
     predict_yolo
 )
 
-def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
+def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
          do_predict, partition, load_model, save_images,   # For gathering predictions
          dts_config, fold, run_name, n_features        # Per-run experiment variables
     ):
+
     with open(f"{dts_config}", "r") as fd:
         dts = json.load(fd)
         scen = Path(dts['scen'])
@@ -32,11 +33,10 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
 
     cfg['save_path'] = cfg['save_path'] / scen
     cfg['data']['class_names'] = cls
-    #if run_cluster is not None:
-    #    cfg['save_path'] += "/" + run_cluster
+
     if run_name is not None:
         print(f"Starting run: {run_name}")
-        if cfg['model_name'] != 'yolo':
+        if cfg['model_name'] != 'yolo' and not torch_training:
             cfg['save_path'] = cfg['save_path'] / Path(run_name)
         else:
             cfg["name"] = run_name
@@ -45,7 +45,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     else:
         print("Starting run")
 
-    tag = "path" if cfg['model_name'] != 'yolo' else "dir"
+    tag = "path" if cfg['model_name'] != 'yolo' or torch_training else "dir"
     if dataset is not None:
         cfg['data'][tag] = dataset
     print(f"Dataset partition: {cfg['data'][tag]}")
@@ -56,7 +56,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
     model_name = cfg['model_name']
 
     if model_name == 'yolo':
-        model = create_yolo(cfg)
+        model = create_yolo(cfg, n_classes, torch_training)
     elif model_name == 'resnet':
         model = create_resnet(cfg, n_classes)
     elif model_name == 'vit':
@@ -72,7 +72,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
 
     # Train
     if train_cfg is not None:
-        if model_name == 'yolo':
+        if model_name == 'yolo' and not torch_training:
             model, results = train_yolo(model, train_cfg, cfg['data'], cfg['save_path'])
         else:
             model, results = train_torch_model(model, train_cfg, cfg['data'], cfg['save_path'], cfg['log_config'])
@@ -87,7 +87,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
 
     # Test or Evaluate
     if test_cfg is not None:
-        if model_name == 'yolo':
+        if model_name == 'yolo' and not torch_training:
             test_results = test_yolo(model, test_cfg, cfg['data'], cfg, partition, load_model)
             cfg['save_path'] = cfg['save_path'] / Path(cfg['name'])
         else:
@@ -104,7 +104,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, # Overall configs
 
     # Test and get predictions
     if do_predict:
-        if model_name == 'yolo':
+        if model_name == 'yolo' and not torch_training:
             save = cfg['save_path'] / Path(cfg['name']) if save_images else None
             predict_results = predict_yolo(model, cfg['data'], cfg, partition, load_model, save)
             if test_cfg is None:
@@ -132,6 +132,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-t', '--train_config', default=None, type=str)
     parser.add_argument('-v', '--test_config', default=None, type=str)
+    parser.add_argument('-tt', '--torch_training', default=False, action='store_true')
 
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test", type=str)
@@ -176,7 +177,8 @@ if __name__ == '__main__':
         if len(clargs['device']) == 1:
             clargs['device'] = f"cuda:{clargs['device']}"
         update_cfgs(train_cfg, test_cfg, clargs,
-                        "use_gpu" if cfg['model_name'] != "yolo" else "device", 'device')
+                        "use_gpu" if cfg['model_name'] != "yolo" or clargs['torch_training']
+                                  else "device", 'device')
         cfg['use_gpu'] = clargs['device']
 
     if clargs['batch_size'] is not None:
@@ -190,6 +192,7 @@ if __name__ == '__main__':
         'test_cfg': test_cfg,
 
         'do_predict': clargs['do_predict'],
+        'torch_training': clargs['torch_training'],
         'partition': clargs['partition'],
         'load_model': clargs['load_model'],
         'dts_config': clargs['dataset_config'],
