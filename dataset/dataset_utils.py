@@ -1,7 +1,9 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, BatchSampler
 from torchvision.transforms import ToTensor, Compose
 import torch
 
+import random
+import math
 import os
 import cv2
 from glob import glob
@@ -78,4 +80,47 @@ class LPSD_Dataset(Dataset):
         lb = self.lbt[idx]
         return im, lb
 
+class BalancedSampler(BatchSampler):
+    def __init__(self, data, bs, cls, static=False, static_shuffle=True):
+        self.data = data
+        self.bs = bs
+        self.n_cls = cls
+        self.map = {c: [] for c in range(cls)}
+        for i in range(len(data)):
+            lb = data[i][1].item()
+            self.map[lb].append(i)
+        mn = min([len(x) for x in self.map.values()])
+        self.n = mn*self.n_cls
 
+        self.static = static
+        self.static_shuffle = static_shuffle
+        if self.static:
+            for v in self.map.values():
+                random.shuffle(v)
+            mn = min([len(x) for x in self.map.values()])
+            self.idxs = []
+            for v in self.map.values():
+                self.idxs += v[:mn]
+            if self.static_shuffle:
+                random.shuffle(self.idxs)
+
+    def __iter__(self):
+        if self.static:
+            if self.static_shuffle:
+                random.shuffle(self.idxs)
+            for i in range(self.__len__()):
+                yield self.idxs[i*self.bs:(i+1)*self.bs]
+            return
+
+        for v in self.map.values():
+            random.shuffle(v)
+        mn = min([len(x) for x in self.map.values()])
+        idxs = []
+        for v in self.map.values():
+            idxs += v[:mn]
+        for i in range(math.ceil(len(idxs) / self.bs)):
+            yield idxs[i*self.bs:(i+1)*self.bs]
+
+    def __len__(self):
+        return math.ceil(self.n / self.bs)
+    
