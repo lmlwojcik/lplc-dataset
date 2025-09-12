@@ -36,7 +36,7 @@ def metrics_from_matrix(mat, cls, cls_dct):
 
     return metrics
 
-def get_overalls(m, e, cls, cls_dct):
+def get_overalls(m, e, cls, cls_dct, subdir):
     overalls = {}
     for o in ['train', 'val', 'test']:
         overalls[o] = []
@@ -44,10 +44,15 @@ def get_overalls(m, e, cls, cls_dct):
     e_p = glob(f"saved/{m}/{e}_*")
 
     for p in e_p:
+        if subdir in p:
+            cls_arg = None
+        else:
+            cls_arg = cls_dct
+
         rep = {}
         with open(f"{p}/all_results.json", "r") as fd:
             js = json.load(fd)
-            rep = metrics_from_matrix(js['test_matrix'], cls, cls_dct)
+            rep = metrics_from_matrix(js['test_matrix'], cls, cls_arg)
             rep['train'] = js['train_micro_f1']
             rep['val'] = js['val_micro_f1']
             rep['test'] = rep.pop('overall')
@@ -81,7 +86,7 @@ def gen_table(results, output):
     plt.grid('off')
 
     h1 = plt.table(
-        cellText=[list(first_rows[i]) + [f"{x:.4g}" for x in data[i//len(ms),i-(i//len(ms)*len(ms))]]
+        cellText=[list(first_rows[i]) + [f"{x:.4g}" for x in data[i//len(ex),i%len(ex)]]
                    for i in range(len(first_rows))],
         colLabels=["Model", "Scenario"] + metrics,
         colWidths= [(0.35*len(x))/(len(ms[0]) + len(ex[0])) for x in [ms[0], ex[0]]] + [0.65/len(metrics)]*len(metrics),
@@ -97,6 +102,7 @@ def gen_table(results, output):
 def main(models, experiments, class_config, transform, output):
     with open(f"configs/split_configs/{class_config}", "r") as fd:
         cls_cfg = json.load(fd)
+        subdir = cls_cfg['sub_dir']
         cls = cls_cfg['class_names']
         cls_dct = cls_cfg['class_dct'] if transform else None
 
@@ -104,7 +110,7 @@ def main(models, experiments, class_config, transform, output):
     for m in models:
         rs[m] = {}
         for i,e in enumerate(experiments):
-            results = get_overalls(m, e, cls, cls_dct)
+            results = get_overalls(m, e, cls, cls_dct, subdir)
             rs[m][e] = results
 
     gen_table(rs, output)
