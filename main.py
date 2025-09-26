@@ -36,7 +36,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
 
     if run_name is not None:
         print(f"Starting run: {run_name}")
-        if cfg['model_name'] != 'yolo' and not torch_training:
+        if cfg['model_name'] != 'yolo' or torch_training:
             cfg['save_path'] = cfg['save_path'] / Path(run_name)
         else:
             cfg["name"] = run_name
@@ -52,6 +52,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
     n_classes = len(cls)
     cfg['n_classes'] = n_classes
     print(f"This protocol has {n_classes} classes.")
+    print(cfg)
 
     model_name = cfg['model_name']
 
