@@ -106,7 +106,7 @@ class BalancedSampler(BatchSampler):
 
     def __iter__(self):
         if self.static:
-            if self.static_shuffle:
+            if not self.static_shuffle:
                 random.shuffle(self.idxs)
             for i in range(self.__len__()):
                 yield self.idxs[i*self.bs:(i+1)*self.bs]
@@ -118,6 +118,7 @@ class BalancedSampler(BatchSampler):
         idxs = []
         for v in self.map.values():
             idxs += v[:mn]
+        random.shuffle(idxs)
         for i in range(math.ceil(len(idxs) / self.bs)):
             yield idxs[i*self.bs:(i+1)*self.bs]
 

@@ -11,7 +11,7 @@ import datetime
 import shutil
 from glob import glob
 
-from dataset.dataset_utils import LPSD_Dataset
+from dataset.dataset_utils import LPSD_Dataset, BalancedSampler
 from models.eval import calc_metrics, gen_metrics
 from models.utils import start_log, end_log, log_metrics_json, dict_to_table
 from models.models import get_model_with_weights
@@ -20,13 +20,16 @@ from models.loss import focal_loss
 def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path = Path(save_path)
     save_path.mkdir(parents=True,exist_ok=True)
+    cls = dataset['class_names']
 
     dts = LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu'])
-    train_data = DataLoader(
-        dts,
-        batch_size=cfg['batch_size'],
-        shuffle=cfg['shuffle']
-    )
+    if cfg['sampler'] == "shuffle":
+        train_data = DataLoader(dts, batch_size=cfg['batch_size'], shuffle=True)
+    elif cfg['sampler'] == "none":
+        train_data = DataLoader(dts, batch_size=cfg['batch_size'], shuffle=False)
+    elif cfg['sampler'] == "custom":
+        sampler = BalancedSampler(dts, cfg['batch_size'], len(cls), **cfg['sampler_config'])
+        train_data = DataLoader(dts, batch_sampler=sampler)
 
     if cfg['validate']:
         valid_data = DataLoader(
