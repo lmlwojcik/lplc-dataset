@@ -6,17 +6,15 @@
     "save_path": "saved/resnet50",
 
     "log_config": {
-        "experiment_name": "resnet_v0",
+        "experiment_name": "training_logs",
+        "method": "steps",
+        "steps": 0.5,
         "loss_log": {
-            "method": "epoch",
-            "metrics": ["train_loss", "val_loss"],
-            "step": 1
+            "metrics": ["train_loss", "val_loss"]
         },
         "metric_log": {
-            "method": "epoch",
             "metrics": ["train_acc", "train_micro_f1",  "train_macro_f1",
-                        "val_acc", "val_micro_f1", "val_macro_f1"],
-            "step": 1
+                        "val_acc", "val_micro_f1", "val_macro_f1"]
         }
     },
     "data": {

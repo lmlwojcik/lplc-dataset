@@ -39,10 +39,11 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         )
 
     if log_cfg is not None:
-        log_file = Path('logs') / Path(log_cfg['experiment_name'] + ".json")
+        log_file = save_path / Path(log_cfg['experiment_name'] + ".json")
         start_log(log_file)
 
     log_metrics = {}
+    best_metrics = {}
 
     if cfg['use_gpu'] != -1:
         if len(cfg['use_gpu']) == 1:
@@ -65,39 +66,69 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         cls_ws = dts.cls_weights.to(cfg['use_gpu'])
         loss = focal_loss(alpha=cls_ws, gamma=2.0, device=cfg['use_gpu'])    
 
-    def train_epoch(epoch=0, c_step=0, device='cuda:0'):
-        e_loss = 0
+    def train_epoch(max_epochs, yield_at='epoch', log_steps=-1, device='cuda:0'):
+        if yield_at == 'epoch':
+            log_steps = None
+        elif isinstance(log_steps, float):
+            log_steps = int(len(train_data)*log_steps)
+        elif isinstance(log_steps, int):
+            log_steps = log_steps//cfg['batch_size']
+
+        nonlocal epoch, c_step
+        epoch = 1
+        c_step = 0
+        s_loss = 0
         pds = torch.tensor([]).to(device)
         gts = torch.tensor([]).to(device)
+        
+        def reset_slice():
+            nonlocal epoch, c_step, s_loss, pds, gts
+            epoch += c_step/len(train_data)
+            c_step = 0
+            s_loss = 0
+            pds = torch.tensor([]).to(device)
+            gts = torch.tensor([]).to(device)
 
-        with tqdm(train_data, unit="batch") as tepoch:
-            for sample in tepoch:
-                tepoch.set_description(f"Epoch {epoch}")
-                c_step += 1
+        while epoch < max_epochs:
+            with tqdm(train_data, unit="batch") as tepoch:
+                for sample in tepoch:
+                    tepoch.set_description(f"Epoch {int(epoch)}")
+                    c_step += 1
 
-                im, lb = sample
-                opt.zero_grad()
+                    im, lb = sample
+                    opt.zero_grad()
 
-                logits = model(im)
-                lb = lb.squeeze(1)
-                c_loss = loss(logits, lb)
+                    logits = model(im)
+                    lb = lb.squeeze(1)
+                    c_loss = loss(logits, lb)
 
-                c_loss.backward()
-                opt.step()
-                e_loss += c_loss.item()
+                    c_loss.backward()
+                    opt.step()
+                    s_loss += c_loss.item()
 
-                pd = logits.max(1).indices
-                pds = torch.cat([pd,pds])
-                gts = torch.cat([lb,gts])
+                    pd = logits.max(1).indices
+                    pds = torch.cat([pd,pds])
+                    gts = torch.cat([lb,gts])
 
-                tepoch.set_postfix(loss=c_loss.item())
+                    if log_steps is not None and c_step % log_steps == 0:
+                        avg_loss = s_loss/c_step
+                        pds = pds.to(torch.int64)
+                        gts = gts.to(torch.int64)
+                        train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
 
-        avg_loss = e_loss/len(train_data)
-        pds = pds.to(torch.int64)
-        gts = gts.to(torch.int64)
-        train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
+                        reset_slice()
+                        yield avg_loss, train_metrics
 
-        return avg_loss, train_metrics
+                    tepoch.set_postfix(loss=c_loss.item())
+
+            if yield_at == 'epoch':
+                avg_loss = s_loss/len(train_data)
+                pds = pds.to(torch.int64)
+                gts = gts.to(torch.int64)
+                train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
+
+                reset_slice()
+                yield avg_loss, train_metrics
 
     if cfg['es_metric'].endswith("loss"):
         best_metric = 1e5
@@ -105,14 +136,16 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         best_metric = 0
     cnt = 0
     epoch = 0
+    c_step = 0
 
     start = datetime.datetime.now()
-    for epoch in range(1, cfg['epochs']+1):
-        print(f"Starting epoch {epoch}")
 
-        epoch_loss, tm = train_epoch(epoch, -1, cfg['use_gpu'])
-        log_metrics['epoch'] = epoch
+    print(f"Starting epoch {epoch}")
+    for epoch_loss, tm in train_epoch(cfg['epochs']+1, log_cfg['method'], log_cfg['steps'], device=cfg['use_gpu']):
 
+        log_metrics['epoch'] = int(epoch)
+        if log_cfg['method'] != 'epoch':
+            log_metrics['step'] = (epoch%1)*len(train_data)
         log_metrics.update(tm)
         log_metrics['train_loss'] = epoch_loss
 
@@ -135,14 +168,16 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
             if (cfg['es_metric'].endswith("loss") and current_metric < best_metric) \
                     or (current_metric > best_metric):
                 best_metric = current_metric
+                best_metrics.update(log_metrics)
                 cnt = 0
                 
                 if cfg['save_best']:
                     torch.save(model.state_dict(), save_path / Path("model_best.pth"))
             if cnt >= cfg['patience']:
                 break
+
     if cfg['save_last']:
-        torch.save(model.state_dict(), save_path / Path(f"model_last_epoch_{epoch}.pth"))
+        torch.save(model.state_dict(), save_path / Path(f"model_last_epoch_{int(epoch)}.pth"))
 
     if epoch == 0:
         log_metrics = calc_metrics(model, train_data, "train",
@@ -150,11 +185,13 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         vm = calc_metrics(model, valid_data, "val",
                           loss=loss, device=cfg['use_gpu'])
         log_metrics.update(vm)
+    else:
+        model.load_state_dict(torch.load(save_path / Path(f"model_best.pth"), weights_only=True))
     if log_cfg is not None:
         log_metrics_json(log_metrics, log_file)
         end_log(log_file)
 
-    return model, log_metrics
+    return model, best_metrics
 
 def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=None):
     dts = LPSD_Dataset(dataset['path'], partition, imgsz=dataset['imgsz'], device=cfg['use_gpu'])
