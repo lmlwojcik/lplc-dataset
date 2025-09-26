@@ -1,5 +1,8 @@
 **/__pycache__/
 sldir/
+aug_sldir/
+aug_sldir2/
+.vscode/
 
 *.zip
 *.png
