@@ -28,7 +28,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
     with open(f"{dts_config}", "r") as fd:
         dts = json.load(fd)
         scen = Path(dts['scen'])
-        dataset = Path("sldir") / Path(dts['sub_dir']) / Path(fold)
+        dataset = Path(dts['sldir']) / Path(dts['sub_dir']) / Path(fold)
         cls = dts['class_names']
 
     cfg['save_path'] = cfg['save_path'] / scen
