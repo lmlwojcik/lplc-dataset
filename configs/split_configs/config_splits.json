@@ -1,10 +1,11 @@
 {
     "dataset_dir": "LPRD_Dataset/lps",
     "annotation_file": "LPRD_Dataset/annotations_formatted.json",
-    "output_dir": "LPRD_Dataset/folds",
+    "output_dir": "LPRD_Dataset/aug_folds",
+    "augmented_dir": "LPRD_Dataset/lps_jpg",
     "do_shuffle": true,
     "n_folds": 5,
     "cross_fold": true,
     "gen_sym_links": true,
-    "sym_link_dir": "sldir"
+    "sym_link_dir": "aug_sldir"
 }

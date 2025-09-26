@@ -52,12 +52,14 @@ def split_files(files, n):
         i += 1
     return ret
 
-def agg_at_idxs(pls, idxs, cls):
+def agg_at_idxs(pls, idxs, cls, aug=None):
     ret = {}
     for i in cls:
         ret[i] = []
         for idx in idxs:
             ret[i] += pls[int(i)][idx]
+            if aug is not None:
+                ret[i] += aug[int(i)][idx]
     return ret
 
 def gen_sym_partition(fs, sldir, fname):
@@ -90,13 +92,16 @@ def class_mapping(c_cfg, n_classes):
 
 def load_fnames(cfg, cls):
     plates = {int(i): [] for i in set(cls.values())}
+    augmented = {int(i): [] for i in set(cls.values())}
     for i in range(cfg['n_classes']):
         if i not in cls.keys():
             continue
+        if cfg['augmented_dir'] is not None:
+            augmented[cls[i]] += sorted(list(glob(f"{cfg['augmented_dir']}/{i}/*")))
         plates[cls[i]] += sorted(list(glob(f"{cfg['dataset_dir']}/{i}/*")))
         if cfg['do_shuffle']:
             random.shuffle(plates[cls[i]])
-    return plates
+    return plates, augmented
 
 def gen_splits(cfg, c_cfg):
     nf = cfg['n_folds']
@@ -105,9 +110,12 @@ def gen_splits(cfg, c_cfg):
     else:
         classes = [x for x in range(len(cfg['n_classes']))]
     cls = class_mapping(c_cfg, cfg['n_classes'])
-    plates = load_fnames(cfg, cls)
+    plates, augmented = load_fnames(cfg, cls)
     for i in set(cls.values()):
         plates[i] = split_files(plates[i], nf)
+    if cfg['augmented_dir'] is not None:
+        for i in set(cls.values()):
+            augmented[i] = split_files(augmented[i], nf)
     if c_cfg is not None:
         cfg['output_dir'] += "/" + c_cfg['sub_dir']
 
@@ -124,7 +132,7 @@ def gen_splits(cfg, c_cfg):
         train_idxs = []
         for j in range(nf//2):
             train_idxs.append((valid_idx - j - 1) % nf)
-        train_fs = agg_at_idxs(plates, train_idxs, cls=classes)
+        train_fs = agg_at_idxs(plates, train_idxs, cls=classes, aug=augmented)
 
         save_folds(train_fs, valid_fs, test_fs, f"{i}_1",
                    fold_dir=cfg['output_dir'])
@@ -166,6 +174,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset_dir', default="LPRD_Dataset/lps")
     parser.add_argument('--output_dir', default="LPRD_Dataset/folds")
+    parser.add_argument('--augmented_dir', default=None, type=str)
+
     parser.add_argument('--do_shuffle', default=False, action='store_true')
     parser.add_argument('--folds', default=5)
     parser.add_argument('--cross_fold', default=False, action='store_true')
