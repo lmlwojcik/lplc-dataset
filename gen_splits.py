@@ -29,7 +29,7 @@ def save_ims(tr, vl, te, n_classes=4, exclude_idx=[]):
     save_prot_ims("val", vl, n_classes=n_classes, exclude_idx=exclude_idx)
     save_prot_ims("test", te, n_classes=n_classes, exclude_idx=exclude_idx)
 
-def save_folds(tr, vl, te, idx=0, dataset_dir="lpr_dts", fold_dir="folds"):
+def save_folds(tr, vl, te, idx=0, fold_dir="folds"):
     path = Path(f"{fold_dir}")
     path.mkdir(parents=True, exist_ok=True)    
 
@@ -53,13 +53,15 @@ def split_files(files, n):
     return ret
 
 def agg_at_idxs(pls, idxs, cls, aug=None):
+    if aug is not None:
+        prefixes = [y.split("/")[-1].split("_")[0] for x in [v for k,v in pls.items() if k in idxs] for z in x for y in z]
     ret = {}
     for i in cls:
         ret[i] = []
         for idx in idxs:
             ret[i] += pls[int(i)][idx]
             if aug is not None:
-                ret[i] += aug[int(i)][idx]
+                ret[i] += [x for x in aug[int(i)][idx] if x.split("/")[-1].split("_")[0] in prefixes]
     return ret
 
 def gen_sym_partition(fs, sldir, fname):
