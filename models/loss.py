@@ -90,3 +90,48 @@ def focal_loss(alpha: Optional[Sequence] = None,
         reduction=reduction,
         ignore_index=ignore_index)
     return fl
+
+class FocalEMA(nn.Module):
+    def __init__(self, num_classes=4, ema_alpha=0.8, ignore_index=-100, device='cuda'):
+        super().__init__()
+        self.num_classes = num_classes
+        self.ema_alpha = ema_alpha
+        self.ignore_index = ignore_index
+        self.device = device
+        self.ema_confusion = torch.zeros(num_classes, num_classes, device=device)
+
+    @torch.no_grad()
+    def get_weights(self, gt, pd):
+        confusion = torch.zeros_like(self.ema_confusion)
+        
+        for t, p in zip(gt, pd):
+            if t != self.ignore_index:
+                confusion[t, p] += + 1
+        
+        self.ema_confusion = self.ema_alpha * confusion + (1 - self.ema_alpha) * self.ema_confusion
+
+        diag = torch.diagonal(self.ema_confusion, dim1=0, dim2=1)
+        total_counts = self.ema_confusion.sum(dim=1)
+        mispred_counts = total_counts - diag
+        
+        max_mispred = mispred_counts.max(dim=0, keepdim=True).values
+        class_weights = max_mispred / (mispred_counts + 1e-6)
+        class_weights = torch.clamp(class_weights, max=1.2)
+        return class_weights
+
+    def forward(self, lg, gt):
+        pd = lg.max(1).indices
+        class_weights = self.get_weights(gt, pd)
+
+        bs, C = lg.shape
+        pred_flat = lg.view(bs, C)
+        gt_flat = gt.view(bs)
+        
+        weights_flat = class_weights[gt_flat]
+        
+        log_probs = F.log_softmax(pred_flat, dim=1)
+        ce_loss = F.nll_loss(log_probs, gt_flat.to(self.device), reduction='none')
+        weighted_loss = (ce_loss * weights_flat).mean()
+        
+        return weighted_loss
+

@@ -15,7 +15,7 @@ from dataset.dataset_utils import LPSD_Dataset, BalancedSampler
 from models.eval import calc_metrics, gen_metrics
 from models.utils import start_log, end_log, log_metrics_json, dict_to_table
 from models.models import get_model_with_weights
-from models.loss import focal_loss
+from models.loss import focal_loss, FocalEMA
 
 def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path = Path(save_path)
@@ -65,6 +65,8 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     elif cfg['loss'] == 'focal':
         cls_ws = dts.cls_weights.to(cfg['use_gpu'])
         loss = focal_loss(alpha=cls_ws, gamma=2.0, device=cfg['use_gpu'])    
+    elif cfg['loss'] == 'ema':
+        loss = FocalEMA(num_classes=len(cls), device=cfg['use_gpu'])    
 
     def train_epoch(max_epochs, yield_at='epoch', log_steps=-1, device='cuda:0'):
         if yield_at == 'epoch':
