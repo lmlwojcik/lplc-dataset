@@ -94,7 +94,10 @@ def class_mapping(c_cfg, n_classes):
 
 def load_fnames(cfg, cls):
     plates = {int(i): [] for i in set(cls.values())}
-    augmented = {int(i): [] for i in set(cls.values())}
+    if cfg['augmented_dir'] is not None:
+        augmented = {int(i): [] for i in set(cls.values())}
+    else:
+        augmented = None
     for i in range(cfg['n_classes']):
         if i not in cls.keys():
             continue
