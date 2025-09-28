@@ -8,7 +8,8 @@ from models.models import (
     create_yolo,
     create_resnet,
     create_vit,
-    create_baseline
+    create_baseline,
+    create_ocr_encoder
 )
 
 from models.trainer import (
@@ -67,6 +68,8 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
         cfg['n_features'] = n_features
         cfg['n_classes'] = n_classes
         model = create_baseline(cfg['model_cfg'], n_features, n_classes)
+    elif model_name == 'encoder':
+        model = create_ocr_encoder(cfg, n_classes)
     else:
         print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()

@@ -1,6 +1,7 @@
 from torchvision.models import vit_b_16, vit_b_32, vit_l_16
 from ultralytics import YOLO
 from torchvision.models import resnet50, resnet101, resnet152
+from models.ocr_archs import make_GPLPR
 
 import torch
 from torch import nn
@@ -112,6 +113,38 @@ def create_yolo(cfg, n_classes=4, torch_training=False):
         yolo = nn.Sequential(backbone, head)
     
     return yolo
+
+def create_ocr_encoder(cfg, n_classes=4):
+    ocr_model = make_GPLPR()
+    ws = torch.load(cfg['ocr_weights'])
+    ocr_model.load_state_dict(ws['model']['sd'])
+
+    encoder = ocr_model.encoder
+    att = ocr_model.attention
+    if cfg['use_attention']:
+        backbone = nn.Sequential(encoder, att, nn.Flatten())
+        in_channels = 64*7
+    else:
+        backbone = nn.Sequential(encoder, nn.Flatten())
+        in_channels = 64*(cfg['data']['imgsz'][0]//4)*(cfg['data']['imgsz'][1]//4)
+
+    for c in backbone.children():
+        c.requires_grad = False
+    hidden_size = cfg['hidden_size']
+    fc_channels = cfg['fc_channels']
+
+    head = nn.Sequential(
+        nn.Linear(in_channels, hidden_size),
+        nn.ReLU(),
+        nn.Linear(hidden_size, fc_channels),
+        nn.ReLU(),
+        nn.Linear(fc_channels, n_classes),
+        #nn.Softmax()
+    )
+    model = nn.Sequential(backbone, head)
+
+    return model
+
 
 def get_model_with_weights(cfg, load_model, device, n_classes=4):
     if cfg['model_name'] == 'small':
