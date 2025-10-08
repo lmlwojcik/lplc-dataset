@@ -42,7 +42,7 @@ def get_overalls(m, e, cls, cls_dct, subdir, metric):
     for o in ['train', 'val', 'test']:
         overalls[o] = []
     overalls.update({c: [] for c in cls})
-    e_p = glob(f"saved/{m}/{e}_*")
+    e_p = glob(f"saved/{m}/{e}_?_?")
 
     for p in e_p:
         if subdir in p:
