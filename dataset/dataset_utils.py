@@ -46,11 +46,13 @@ def calc_class_weights(gts):
     return ws
 
 class LPSD_Dataset(Dataset):
-    def __init__(self, sldir, partition, imgsz=32, device='cpu'):
+    def __init__(self, sldir, partition, grayscale=True, imgsz=32, device='cpu'):
         if device == -1:
             device = "cpu"
         self.device = torch.device(device)
         self.files = sorted(list(glob(f"{sldir}/{partition}/*/*")))
+        if isinstance(imgsz, int):
+            imgsz = (imgsz, imgsz)
         self.imgsz = imgsz
         self.transform = Compose([
             ToTensor()
@@ -66,6 +68,9 @@ class LPSD_Dataset(Dataset):
             if not os.path.exists(f):
                 continue
             self.nfs += 1
+            im = cv2.imread(f)
+            if grayscale:
+                im = cv2.cvtColor(im, cv2.BGR2GRAY)
             im = resize_with_pad(cv2.imread(f), imgsz)
             self.fs.append(f)
             self.ims.append(self.transform(im).to(self.device))
@@ -112,15 +117,27 @@ class BalancedSampler(BatchSampler):
                 yield self.idxs[i*self.bs:(i+1)*self.bs]
             return
 
+        mn = min([len(x) for x in self.map.values()])
         for v in self.map.values():
             random.shuffle(v)
-        mn = min([len(x) for x in self.map.values()])
+
+        # Batches possible unbalanced:
         idxs = []
         for v in self.map.values():
             idxs += v[:mn]
         random.shuffle(idxs)
-        for i in range(math.ceil(len(idxs) / self.bs)):
+
+        for i in range(math.ceil((mn*len(self.map.keys())) / self.bs)):
             yield idxs[i*self.bs:(i+1)*self.bs]
+
+        # All batches guaranteed to be balanced:
+        # for i in range(math.ceil((mn*len(self.map.keys())) / self.bs)):
+        #     rt = []
+        #     for j in self.map.keys():
+        #         rt += self.map[j][i*(self.bs//len(self.map.keys())):(i+1)*(self.bs//len(self.map.keys()))]
+        #     random.shuffle(rt)
+        #     yield rt
+
 
     def __len__(self):
         return math.ceil(self.n / self.bs)
