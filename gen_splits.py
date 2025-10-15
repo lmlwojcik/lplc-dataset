@@ -125,19 +125,21 @@ def gen_splits(cfg, c_cfg):
         cfg['output_dir'] += "/" + c_cfg['sub_dir']
 
     n_folds = {}
+    n_folds_train = cfg['train_size']
     for i in range(nf):
         valid_idx = i
         valid_fs = agg_at_idxs(plates, [valid_idx], cls=classes)
 
+        train_idxs = []
+        for j in range(cfg['train_size']):
+            train_idxs.append((valid_idx - j - 1) % nf)
+        train_fs = agg_at_idxs(plates, train_idxs, cls=classes, aug=augmented)
+
         test_idxs = []
-        for j in range(nf//2):
+        for j in range(nf - (n_folds_train + 1)):
             test_idxs.append((valid_idx + j + 1) % nf)
         test_fs = agg_at_idxs(plates, test_idxs, cls=classes)
 
-        train_idxs = []
-        for j in range(nf//2):
-            train_idxs.append((valid_idx - j - 1) % nf)
-        train_fs = agg_at_idxs(plates, train_idxs, cls=classes, aug=augmented)
 
         save_folds(train_fs, valid_fs, test_fs, f"{i}_1",
                    fold_dir=cfg['output_dir'])
@@ -183,6 +185,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--do_shuffle', default=False, action='store_true')
     parser.add_argument('--folds', default=5)
+    parser.add_argument('--train_size', default=2, type=int)
     parser.add_argument('--cross_fold', default=False, action='store_true')
     parser.add_argument('--gen_sym_links', default=False, action='store_true')
     parser.add_argument('--sym_link_dir', default="sldir")
