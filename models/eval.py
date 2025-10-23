@@ -11,7 +11,7 @@ from torcheval.metrics.functional import (
 
 import torch
 
-def eval_model(model, data, loss=None, verbose=False, device=None):
+def eval_model(model, data, task, loss=None, verbose=False, device=None):
     pds = torch.tensor([]).to(device)
     gts = torch.tensor([]).to(device)
 
@@ -36,19 +36,22 @@ def eval_model(model, data, loss=None, verbose=False, device=None):
                 idx += 1
 
             pd = logits.max(1).indices
-
+                        
             pds = torch.cat([pd,pds])
             gts = torch.cat([lb,gts])
-    pds = pds.to(torch.int64)
-    gts = gts.to(torch.int64)
 
     if loss is not None:
         vloss /= idx
 
     return gts, pds, vloss
 
-def gen_metrics(gts, pds, cls, pt="train", return_matrix=False, loss=None):
+def gen_metrics(gts, pds, cls, pt="train", task='classification', return_matrix=False, loss=None):
     n_classes = len(cls)
+    if task == 'regression':
+        gts = torch.Tensor.round(gts*(n_classes-1))
+        pds = torch.Tensor.round(pds*(n_classes-1))
+    gts = gts.to(torch.int64)
+    pds = pds.to(torch.int64)
 
     #micro_f1 = multiclass_f1_score(pds,gts,average='micro').item()
     macro_f1 = multiclass_f1_score(pds,gts,average='macro',num_classes=n_classes).item()
@@ -76,16 +79,17 @@ def calc_metrics(
         data,
         pt="train",
         return_matrix=False,
+        task='classification',
         loss=None,
         verbose=False,
         class_names=None,
         device='cpu'
     ):
 
-    gts, pds, loss = eval_model(model, data,
+    gts, pds, loss = eval_model(model, data, task,
                                 loss=loss,
                                 verbose=verbose, device=device)
 
     if class_names is None:
         class_names = ["Illegible", "Poor", "Good", "Perfect"]
-    return gen_metrics(gts, pds, class_names, pt, return_matrix, loss=loss)
+    return gen_metrics(gts, pds, class_names, pt, task, return_matrix, loss=loss)
