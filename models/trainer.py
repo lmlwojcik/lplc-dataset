@@ -22,18 +22,18 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     save_path.mkdir(parents=True,exist_ok=True)
     cls = dataset['class_names']
 
-    dts = LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu'])
+    dts = LPSD_Dataset(dataset['path'], "train", imgsz=dataset['imgsz'], device=cfg['use_gpu'], task=cfg['task'])
     if cfg['sampler'] == "shuffle":
         train_data = DataLoader(dts, batch_size=cfg['batch_size'], shuffle=True)
     elif cfg['sampler'] == "none":
         train_data = DataLoader(dts, batch_size=cfg['batch_size'], shuffle=False)
     elif cfg['sampler'] == "custom":
-        sampler = BalancedSampler(dts, cfg['batch_size'], len(cls), **cfg['sampler_config'])
+        sampler = BalancedSampler(dts, cfg['batch_size'], len(cls), **cfg['sampler_config'], task=cfg['task'])
         train_data = DataLoader(dts, batch_sampler=sampler)
 
     if cfg['validate']:
         valid_data = DataLoader(
-            LPSD_Dataset(dataset['path'], "val", imgsz=dataset['imgsz'], device=cfg['use_gpu']),
+            LPSD_Dataset(dataset['path'], "val", imgsz=dataset['imgsz'], device=cfg['use_gpu'], task=cfg['task']),
             batch_size=cfg['batch_size'],
             shuffle=cfg['shuffle']
         )
@@ -67,6 +67,8 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         loss = focal_loss(alpha=cls_ws, gamma=2.0, device=cfg['use_gpu'])    
     elif cfg['loss'] == 'ema':
         loss = FocalEMA(num_classes=len(cls), device=cfg['use_gpu'])    
+    elif cfg['loss'] == 'mse':
+        loss = nn.MAELoss()
 
     def train_epoch(max_epochs, yield_at='epoch', log_steps=-1, device='cuda:0'):
         if yield_at == 'epoch':
@@ -92,6 +94,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
             gts = torch.tensor([]).to(device)
 
         while epoch < max_epochs:
+            model.train()
             with tqdm(train_data, unit="batch") as tepoch:
                 for sample in tepoch:
                     tepoch.set_description(f"Epoch {int(epoch)}")
@@ -102,6 +105,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
                     logits = model(im)
                     lb = lb.squeeze(1)
+                    #logits = logits.squeeze()
                     c_loss = loss(logits, lb)
 
                     c_loss.backward()
@@ -109,14 +113,15 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
                     s_loss += c_loss.item()
 
                     pd = logits.max(1).indices
+                    #pd = logits
                     pds = torch.cat([pd,pds])
                     gts = torch.cat([lb,gts])
-
+                    
                     if log_steps is not None and c_step % log_steps == 0:
                         avg_loss = s_loss/c_step
-                        pds = pds.to(torch.int64)
-                        gts = gts.to(torch.int64)
-                        train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
+
+                        train_metrics = gen_metrics(gts, pds, pt="train", task=cfg['task'],
+                                                    cls=dataset['class_names'], loss=avg_loss)
 
                         reset_slice()
                         yield avg_loss, train_metrics
@@ -125,9 +130,9 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
 
             if yield_at == 'epoch':
                 avg_loss = s_loss/len(train_data)
-                pds = pds.to(torch.int64)
-                gts = gts.to(torch.int64)
-                train_metrics = gen_metrics(gts, pds, pt="train", cls=dataset['class_names'], loss=avg_loss)
+
+                train_metrics = gen_metrics(gts, pds, pt="train", task=cfg['task'],
+                                            cls=dataset['class_names'], loss=avg_loss)
 
                 reset_slice()
                 yield avg_loss, train_metrics
@@ -141,6 +146,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
     c_step = 0
 
     start = datetime.datetime.now()
+    model.train()
 
     print(f"Starting epoch {epoch}")
     for epoch_loss, tm in train_epoch(cfg['epochs']+1, log_cfg['method'], log_cfg['steps'], device=cfg['use_gpu']):
@@ -152,7 +158,7 @@ def train_torch_model(model, cfg, dataset, save_path, log_cfg=None):
         log_metrics['train_loss'] = epoch_loss
 
         if cfg['validate']: 
-            vm = calc_metrics(model, valid_data, "val", class_names=dataset['class_names'],
+            vm = calc_metrics(model, valid_data, "val", class_names=dataset['class_names'], task=cfg['task'],
                               loss=loss, device=cfg['use_gpu'])
             log_metrics.update(vm)
             scheduler.step(log_metrics['val_loss'])
@@ -211,6 +217,8 @@ def test_torch_model(model, cfg, dataset, g_cfg, partition='test', load_model=No
         model = get_model_with_weights(g_cfg, load_model, cfg['use_gpu'], n_classes=n_classes)
 
     print("Running test")
+    model.eval()
+
     metrics = calc_metrics(model, test_data, pt=partition,
                            return_matrix=True, verbose=True,
                            class_names=cls,
