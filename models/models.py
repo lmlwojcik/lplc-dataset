@@ -1,10 +1,12 @@
 from torchvision.models import vit_b_16, vit_b_32, vit_l_16
 from ultralytics import YOLO
-from torchvision.models import resnet50, resnet101, resnet152
+from torchvision.models import resnet50, resnet101, resnet152, resnet18, resnet34
 from models.ocr_archs import make_GPLPR
 
 import torch
 from torch import nn
+from torch.nn import functional as F
+from torchvision.ops import FeaturePyramidNetwork as FPN
 
 from models.utils import find_model
 from models.builder import build_network
@@ -80,13 +82,22 @@ def create_resnet(cfg, n_classes=4):
         resnet = resnet101(weights=cfg['resnet_weights'])
     elif cfg['model_cfg'] == 'resnet152':
         resnet = resnet152(weights=cfg['resnet_weights'])
+    if cfg['model_cfg'] == 'resnet18':
+        resnet = resnet18(weights=cfg['resnet_weights'])
+    if cfg['model_cfg'] == 'resnet34':
+        resnet = resnet34(weights=cfg['resnet_weights'])
 
     if cfg['freeze']:
         for c in resnet.children():
             c.requires_grad = False
 
     n_ft = resnet.fc.in_features
-    resnet.fc = nn.Linear(n_ft, n_classes)
+    if "task" in cfg.keys() and cfg['task'] == "regression":
+        n_classes = 1
+        resnet.fc = nn.Linear(n_ft, n_classes)
+        resnet = nn.Sequential(resnet, nn.Sigmoid())
+    else:
+        resnet.fc = nn.Linear(n_ft, n_classes)
 
     return resnet
 
@@ -110,6 +121,7 @@ def create_yolo(cfg, n_classes=4, torch_training=False):
                 nn.Flatten(),
                 nn.Linear(out_channels, n_classes)
             )
+
         yolo = nn.Sequential(backbone, head)
     
     return yolo
@@ -128,8 +140,8 @@ def create_ocr_encoder(cfg, n_classes=4):
         backbone = nn.Sequential(encoder, nn.Flatten())
         in_channels = 64*(cfg['data']['imgsz'][0]//4)*(cfg['data']['imgsz'][1]//4)
 
-    for c in backbone.children():
-        c.requires_grad = False
+    #for c in backbone.children():
+    #    c.requires_grad = False
     hidden_size = cfg['hidden_size']
     fc_channels = cfg['fc_channels']
 
@@ -146,11 +158,140 @@ def create_ocr_encoder(cfg, n_classes=4):
     return model
 
 
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels, mid_channels=None):
+        super().__init__()
+        if not mid_channels:
+            mid_channels = out_channels
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.double_conv(x)
+
+class Down(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
+    def forward(self, x):
+        return self.maxpool_conv(x)
+
+class Up(nn.Module):
+    def __init__(self, in_channels, out_channels, bilinear=True):
+        super().__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
+        else:
+            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+class OutConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.conv = nn.Linear(in_channels, out_channels)
+
+    def forward(self, x):
+        return self.conv(x)
+
+class UNet(nn.Module):
+    def __init__(self, n_channels, n_classes, bilinear=False):
+        super(UNet, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = (DoubleConv(n_channels, 64))
+        self.down1 = (Down(64, 128))
+        self.down2 = (Down(128, 256))
+        factor = 2 if bilinear else 1
+        self.down3 = (Down(256, 512//factor))
+        self.up1 = (Up(512, 256 // factor, bilinear))
+        self.up2 = (Up(256, 128 // factor, bilinear))
+        self.up3 = (Up(128, 64, bilinear))
+
+        self.fpn = FPN([64, 128, 256], 16)
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(196608, 256)
+        self.fc2 = nn.Linear(49152, 256)
+        self.fc3 = nn.Linear(12288, 256)
+        self.hidden = nn.Linear(256*3, 192)
+        self.out = nn.Linear(192, 4)
+
+        # self.fco1 = nn.Linear(32*64*192, 192)
+        # self.fco2 = nn.Linear(192, n_classes)
+        #self.outc = (OutConv(192, n_classes))
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x_up1 = self.up1(x4, x3)
+        #print(x_up1.shape)
+        x_up2 = self.up2(x_up1, x2)
+        #print(x_up2.shape)
+        x_up3 = self.up3(x_up2, x1)
+        #print(x_up3.shape)
+        
+        fpn_out = self.fpn({k:v for k,v in enumerate([x_up3, x_up2, x_up1])})
+
+        #print(self.flatten(fpn_out[0]).shape, self.flatten(fpn_out[1]).shape, self.flatten(fpn_out[2]).shape)
+        f1 = self.fc1(self.flatten(fpn_out[0]))
+        f2 = self.fc2(self.flatten(fpn_out[1]))
+        f3 = self.fc3(self.flatten(fpn_out[2]))
+        catd = torch.cat([f1,f2,f3], dim=1)
+        hd = self.hidden(catd)
+        logits = self.out(hd)
+
+        #x = self.flatten(x_up4)
+        #x = self.fc1(x)
+        #logits = self.fc2(x)
+        #logits = self.outc(x)
+        return logits
+
+    def use_checkpointing(self):
+        self.inc = torch.utils.checkpoint(self.inc)
+        self.down1 = torch.utils.checkpoint(self.down1)
+        self.down2 = torch.utils.checkpoint(self.down2)
+        self.down3 = torch.utils.checkpoint(self.down3)
+        self.down4 = torch.utils.checkpoint(self.down4)
+        self.up1 = torch.utils.checkpoint(self.up1)
+        self.up2 = torch.utils.checkpoint(self.up2)
+        self.up3 = torch.utils.checkpoint(self.up3)
+        self.up4 = torch.utils.checkpoint(self.up4)
+        self.outc = torch.utils.checkpoint(self.outc)
+
+def create_unet(cfg, n_classes):
+    unet = UNet(3, n_classes)
+    print(unet)
+    return unet
+
 def get_model_with_weights(cfg, load_model, device, n_classes=4):
     if cfg['model_name'] == 'small':
         model = create_baseline(cfg['model_cfg'], cfg['n_features'], cfg['n_classes'])
     elif cfg['model_name'] == 'resnet':
         model = create_resnet(cfg, n_classes=n_classes)
+    elif cfg['model_name'] == 'yolo':
+        model = create_yolo(cfg, n_classes=n_classes, torch_training=True)
     else:
         model = create_vit(cfg, n_classes=n_classes)
     
