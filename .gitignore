@@ -1,7 +1,5 @@
 **/__pycache__/
-sldir/
-aug_sldir/
-aug_sldir2/
+*sldir*/
 .vscode/
 
 *.zip
