@@ -134,26 +134,85 @@ def create_ocr_encoder(cfg, n_classes=4):
     encoder = ocr_model.encoder
     att = ocr_model.attention
     if cfg['use_attention']:
-        backbone = nn.Sequential(encoder, att, nn.Flatten())
+        backbone = ocr_model
+        #backbone = nn.Sequential(encoder, att, nn.Flatten())
         in_channels = 64*7
     else:
-        backbone = nn.Sequential(encoder, nn.Flatten())
+        backbone = ocr_model.encoder
+        #backbone = nn.Sequential(encoder, nn.Flatten())
         in_channels = 64*(cfg['data']['imgsz'][0]//4)*(cfg['data']['imgsz'][1]//4)
 
-    #for c in backbone.children():
-    #    c.requires_grad = False
-    hidden_size = cfg['hidden_size']
-    fc_channels = cfg['fc_channels']
+    if cfg['freeze']:
+        for c in backbone.children():
+            c.requires_grad = False
+    else:
+        for c in backbone.children():
+            c.requires_grad = True
+    
+    class OCRLeg(nn.Module):
+        def __init__(self, n_cls):
+            super().__init__()
+            self.l1 = nn.Linear(192, 64)
+            self.l1a = nn.ReLU()
+            self.l2 = nn.Linear(192, 64)
+            self.l2a = nn.ReLU()
+            self.l3 = nn.Linear(192, 64)
+            self.l3a = nn.ReLU()
+            self.l4 = nn.Linear(192, 64)
+            self.l4a = nn.ReLU()
+            self.l5 = nn.Linear(192, 64)
+            self.l5a = nn.ReLU()
+            self.l6 = nn.Linear(192, 64)
+            self.l6a = nn.ReLU()
+            self.l7 = nn.Linear(192, 64)
+            self.l7a = nn.ReLU()
 
-    head = nn.Sequential(
-        nn.Linear(in_channels, hidden_size),
-        nn.ReLU(),
-        nn.Linear(hidden_size, fc_channels),
-        nn.ReLU(),
-        nn.Linear(fc_channels, n_classes),
-        #nn.Softmax()
-    )
-    model = nn.Sequential(backbone, head)
+            self.h1 = nn.Linear(64*7, 192)
+            self.h1a = nn.ReLU()
+            self.h2 = nn.Linear(192, 64)
+            self.h2a = nn.ReLU()
+            self.cls = nn.Linear(64, n_cls)
+
+        def forward(self, input):
+            x = input[0]
+
+            x1 = self.l1(x.select(1, 0))
+            x1 = self.l1a(x1)
+            x2 = self.l2(x.select(1, 1))
+            x2 = self.l2a(x2)
+            x3 = self.l3(x.select(1, 2))
+            x3 = self.l3a(x3)
+            x4 = self.l4(x.select(1, 3))
+            x4 = self.l4a(x4)
+            x5 = self.l5(x.select(1, 4))
+            x5 = self.l5a(x5)
+            x6 = self.l6(x.select(1, 5))
+            x6 = self.l6a(x6)
+            x7 = self.l7(x.select(1, 6))
+            x7 = self.l7a(x7)
+
+            nx = torch.cat([x1,x2,x3,x4,x5,x6,x7], dim=1)
+        
+            x = self.h1(nx)
+            x = self.h1a(x)
+            x = self.h2(x)
+            x = self.h2a(x)
+            out = self.cls(x)
+
+            return out
+
+    #hidden_size = cfg['hidden_size']
+    #fc_channels = cfg['fc_channels']
+
+    # head = nn.Sequential(
+    #     nn.Linear(in_channels, hidden_size),
+    #     nn.ReLU(),
+    #     nn.Linear(hidden_size, fc_channels),
+    #     nn.ReLU(),
+    #     nn.Linear(fc_channels, n_classes),
+    #     #nn.Softmax()
+    # )
+    model = nn.Sequential(backbone, OCRLeg(4))
 
     return model
 

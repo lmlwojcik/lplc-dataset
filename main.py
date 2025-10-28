@@ -9,7 +9,8 @@ from models.models import (
     create_resnet,
     create_vit,
     create_baseline,
-    create_ocr_encoder
+    create_ocr_encoder,
+    create_unet
 )
 
 from models.trainer import (
@@ -53,7 +54,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
     n_classes = len(cls)
     cfg['n_classes'] = n_classes
     print(f"This protocol has {n_classes} classes.")
-    print(cfg)
+    print(f"Experiment configuration: ", cfg)
 
     model_name = cfg['model_name']
 
@@ -70,6 +71,8 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
         model = create_baseline(cfg['model_cfg'], n_features, n_classes)
     elif model_name == 'encoder':
         model = create_ocr_encoder(cfg, n_classes)
+    elif model_name == 'unet':
+        model = create_unet(cfg, n_classes)
     else:
         print("Error -- model must be one of: yolo, resnet, vit, base, small. Got: ", model_name)
         exit()
@@ -77,9 +80,11 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
     # Train
     if train_cfg is not None:
         if model_name == 'yolo' and not torch_training:
-            model, results = train_yolo(model, train_cfg, cfg['data'], cfg['save_path'])
+            model, results = train_yolo(model, train_cfg, cfg['data'],
+                                        cfg['save_path'])
         else:
-            model, results = train_torch_model(model, train_cfg, cfg['data'], cfg['save_path'], cfg['log_config'])
+            model, results = train_torch_model(model, train_cfg, cfg['data'],
+                                               cfg['save_path'], cfg['log_config'])
         if results is not None:
             with open(Path(cfg['save_path']) / "train_results.json", "w") as fd:
                 json.dump(results, fd, indent=2)
@@ -103,7 +108,7 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
         
         plt.title(f"{scen} - {partition} C-Matrix")
         plt.tight_layout()
-        plt.savefig(Path(cfg['save_path']) / f"test_{partition}_confusion_matrix.png")
+        plt.savefig(Path(cfg['save_path']) / f"test_{partition}_cm.png")
         plt.clf()
 
     # Test and get predictions
@@ -115,14 +120,15 @@ def main(cfg, model_cfg, train_cfg, test_cfg, torch_training, # Overall configs
                 cfg['save_path'] = cfg['save_path'] / Path(cfg['name'])
         else:
             save = cfg['save_path'] if save_images else None
-            predict_results = predict_torch_model(model, dts, cfg['data'], cfg, partition, load_model, save)
+            predict_results = predict_torch_model(model, dts, cfg['data'],
+                                                  cfg, partition, load_model, save)
         print(predict_results['metrics'])
-        with open(Path(cfg['save_path']) / f"predict_results_{partition}_with_logits.json", "w") as fd:
+        with open(Path(cfg['save_path']) / f"predict_results_{partition}.json", "w") as fd:
             json.dump(predict_results, fd, indent=2)
         
         plt.title(f"{scen} - {partition} C-Matrix")
         plt.tight_layout()
-        plt.savefig(Path(cfg['save_path']) / f"predict_{partition}_confusion_matrix.png")
+        plt.savefig(Path(cfg['save_path']) / f"predict_{partition}_cm.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -137,12 +143,13 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--train_config', default=None, type=str)
     parser.add_argument('-v', '--test_config', default=None, type=str)
     parser.add_argument('-tt', '--torch_training', default=False, action='store_true')
+    parser.add_argument('-a', '--album_config', default=None, type=str)
 
     parser.add_argument('-p', '--do_predict', default=False, action='store_true')
     parser.add_argument('-pt', '--partition', default="test", type=str)
     parser.add_argument('-s', '--save_images', default=False, action='store_true')
 
-    parser.add_argument('-dt', '--dataset_config', default='configs/split_configs/config_classes_base.json', type=str)
+    parser.add_argument('-dt', '--dataset_config', default='configs/split/base.json', type=str)
     parser.add_argument('-f', '--fold', default='0_1', type=str)
     parser.add_argument('-m', '--load_model', default=None, type=str)
     parser.add_argument('-nf', '--n_features', default=None, type=int)
@@ -152,6 +159,7 @@ if __name__ == '__main__':
     config = clargs['config']
     with open(config, "r") as fd:
         cfg = json.load(fd)
+    cfg['data']['transform_config'] = clargs['album_config']
     
     if clargs['train_config'] is None:
         if 'train_config' in cfg.keys():
@@ -187,7 +195,8 @@ if __name__ == '__main__':
 
     if clargs['batch_size'] is not None:
         update_cfgs(train_cfg, test_cfg, clargs,
-                        "batch_size" if cfg['model_name'] != "yolo" else "batch", 'batch_size')
+                        "batch_size" if cfg['model_name'] != "yolo"
+                                     else "batch", 'batch_size')
 
     args = {
         'cfg': cfg,
