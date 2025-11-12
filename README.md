@@ -116,7 +116,7 @@ All samples in the dataset can only be used by the applicant and only used for a
   volume = {},
   number = {},
   pages = {1-6},
-  doi = {},
+  doi = {10.1109/SIBGRAPI67909.2025.11223367},
   issn = {1530-1834},
 }
 ```
